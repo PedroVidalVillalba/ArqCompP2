@@ -64,7 +64,7 @@ void random_index(int** index, int size) {
     for (i = size - 1; i >= 0; i--) {
         j = rand() % (size - 1);
 
-        temp = *index[i];
+        temp = (*index)[i];
         (*index)[i] = (*index)[j];
         (*index)[j] = (*index)[i];
     }
@@ -75,7 +75,7 @@ void random_index(int** index, int size) {
 #define get_rand() ((2 * (lrand48() & 1) - 1) * (1 + drand48()))
 
 
-int main(int argc, void** argv) {
+int main(int argc, char** argv) {
     double **a, **b, **d;
     double *c, *e;
     double f;
