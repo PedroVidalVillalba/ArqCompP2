@@ -36,6 +36,16 @@
 *.x86_64
 *.hex
 
+# Ejecutables de la práctica
+p21o0
+p21o2
+p21o3
+p22
+p23
+p24o0
+p24o2
+
+
 # Debug files
 *.dSYM/
 *.su
