@@ -17,14 +17,14 @@ gcc p2_apartado1.c  -o p21o0 -O0
 gcc p2_apartado1.c  -o p21o2 -O2
 gcc p2_apartado1.c  -o p21o3 -O3
 
-gcc p2_apartado2.c  -o p22 -O0
+gcc p2_apartado2_1.c  -o p22 -O0
 
 gcc p2_apartado3.c  -o p23 -O0 -march=native 
 
 gcc p2_apartado4.c  -o p24o0 -O0 -fopenmp
 gcc p2_apartado4.c  -o p24o2 -O2 -fopenmp
 
-for N in 250 500 750 1000 1500 2000 2550 3000
+for N in 500 750 1000 1500 2000 2500 3000 3500
 do
 
 echo "##################################"

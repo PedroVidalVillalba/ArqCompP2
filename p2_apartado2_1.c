@@ -14,20 +14,19 @@
 #include <time.h>
 
 #define M 8
-#define RAND_SEED 888
 
+#define RAND_SEED 888
 /* drand48 devuelve un double aleatorio en [0, 1); le sumamos 1 para ponerlo en [1, 2)
  * lrand48 devuelve un long aleatorio; si el número es par multiplicamos por 1 y si es impar por -1 */
 #define get_rand() ((2 * (lrand48() & 1) - 1) * (1 + drand48()))
 
 
-/*** CÓDIGO ASOCIADO A LA MEDIDA DE CICLOS ***/
+/* CÓDIGO ASOCIADO A LA MEDIDA DE CICLOS */
 
 void start_counter();
 double get_counter();
 
 /* Initialize the cycle counter */
-
 static unsigned cyc_hi = 0;
 static unsigned cyc_lo = 0;
 
@@ -69,43 +68,26 @@ double get_counter()
     return result;
 }
 
-/*** FIN CÓDIGO ASOCIADO A LA MEDIDA DE CICLOS ***/
+/* FIN CÓDIGO ASOCIADO A LA MEDIDA DE CICLOS */
 
-void alloc_matrix(double*** matrix, int rows, int columns) {
-    *matrix = (double **) malloc(rows * sizeof(double));
-    for (int i = 0; i < rows; i++) {
-        (*matrix)[i] = (double *) calloc(columns, sizeof(double));
-    }
-}
-
-void free_matrix(double **matrix, int rows, int columns) {   
-    int i;
-
-    for (i = 0; i < (rows); i++) {
-        free(matrix[i]);
-    }
-    free(matrix);
-}
-
-void random_matrix(double **matrix, int rows, int columns) {  
+void random_matrix(double *matrix, int rows, int columns) {
     int i, j;
 
-    for (i = 0; i < rows; i++) {                
-        for (j = 0; j < columns; j++) {         
-            matrix[i][j] = get_rand();          
-        }                                       
-    }                                           
+    for (i = 0; i < rows; i++) {
+        for (j = 0; j < columns; j++) {
+            matrix[i * columns + j] = get_rand();
+        }
+    }
 }
 
-void random_array(double* array, int size) {         
+void random_array(double* array, int size) {
     int i;
 
-    for (i = 0; i < size; i++) {            
-        array[i] = get_rand();                  
-    }                                           
+    for (i = 0; i < size; i++) {
+        array[i] = get_rand();
+    }
 }
 
-/** Fisher-Yates shuffle */
 void random_index(int** index, int size) {
     int i, j;
     int temp;
@@ -126,14 +108,14 @@ void random_index(int** index, int size) {
 }
 
 int main(int argc, char** argv) {
-    double **a, **b, **d;
+    register int i, j, k; // Reordenamos datos 1
+    register int d_index, a_index, b_index;
+    int N; // Reordenamos datos 2
+    double *a, *b, *d;
+    int *ind; // Reordenamos datos 3 (así esta cerca de d)
     double *c, *e;
     double f;
     double ck;
-    int *ind;
-    int i, j, k;
-    int N;
-
 
     /* Procesamos los argumentos */
     if (argc != 2) {
@@ -142,11 +124,11 @@ int main(int argc, char** argv) {
     }
     N = atoi(argv[1]);
 
-    alloc_matrix(&a, N, M);
-    alloc_matrix(&b, M, N);
+    a = (double *) malloc(N * M * sizeof(double));
+    b = (double *) malloc(M * N * sizeof(double));
     c = (double *) malloc(M * sizeof(double));
     e = (double *) malloc(N * sizeof(double));
-    
+
     srand48(RAND_SEED);
     random_matrix(a, N, M);
     random_matrix(b, M, N);
@@ -154,24 +136,29 @@ int main(int argc, char** argv) {
     random_index(&ind, N);
 
     // Inicialización de todas las componentes de d a cero
-    alloc_matrix(&d, N, N);
+    d = (double *) calloc(N * N, sizeof(double));
 
     // Comenzamos el contador de ciclos
     start_counter();
 
     // Realizar las operaciones especificadas
+    d_index = 0;
     for (i = 0; i < N; i++) {
         for (j = 0; j < N; j++) {
+            a_index = i * M;
+            //b_index = j;
             for (k = 0; k < M; k++) {
-                d[i][j] += 2 * a[i][k] * (b[k][j] - c[k]);
+                d[d_index] += 2 * a[a_index++] * (b[k * N + j] - c[k]);
+                //b_index += N;
             }
+            d_index++;
         }
     }
 
     f = 0;
 
     for (i = 0; i < N; i++) {
-        e[i] = d[ind[i]][ind[i]] / 2;
+        e[i] = d[ind[i] * (N + 1)] / 2;
         f += e[i];
     }
 
@@ -182,9 +169,9 @@ int main(int argc, char** argv) {
 
     printf("\n Clocks=%1.10lf \n",ck);
 
-    free_matrix(a, N, M);
-    free_matrix(b, M, N);
-    free_matrix(d, N, N);
+    free(a);
+    free(b);
+    free(d);
     free(c);
     free(e);
     free(ind);
