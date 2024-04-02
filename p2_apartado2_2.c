@@ -7,7 +7,6 @@
  * @authors Vidal Villalba, Pedro
  */
 
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -19,7 +18,6 @@
 /* drand48 devuelve un double aleatorio en [0, 1); le sumamos 1 para ponerlo en [1, 2)
  * lrand48 devuelve un long aleatorio; si el número es par multiplicamos por 1 y si es impar por -1 */
 #define get_rand() ((2 * (lrand48() & 1) - 1) * (1 + drand48()))
-
 
 /* CÓDIGO ASOCIADO A LA MEDIDA DE CICLOS */
 
@@ -108,8 +106,7 @@ void random_index(int** index, int size) {
 }
 
 int main(int argc, char** argv) {
-    register int i, j, k; // Reordenamos datos 1
-    register int d_index, a_index;
+    int i, j, k; // Reordenamos datos 1
     int N; // Reordenamos datos 2
     double *a, *b, *d;
     int *ind; // Reordenamos datos 3 (así esta cerca de d)
@@ -142,14 +139,12 @@ int main(int argc, char** argv) {
     start_counter();
 
     // Realizar las operaciones especificadas
-    d_index = 0;
     for (i = 0; i < N; i++) {
         for (j = 0; j < N; j++) {
-            a_index = i * M;
             for (k = 0; k < M; k++) {
-                d[d_index] += 2 * a[a_index++] * (b[k * N + j] - c[k]);
+                d[i * N + j] += a[i * M + k] * (b[k * N + j] - c[k]);
             }
-            d_index++;
+            d[i * N + j] *= 2;
         }
     }
 

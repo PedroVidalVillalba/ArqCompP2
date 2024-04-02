@@ -7,7 +7,6 @@
  * @authors Vidal Villalba, Pedro
  */
 
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -19,7 +18,6 @@
 /* drand48 devuelve un double aleatorio en [0, 1); le sumamos 1 para ponerlo en [1, 2)
  * lrand48 devuelve un long aleatorio; si el número es par multiplicamos por 1 y si es impar por -1 */
 #define get_rand() ((2 * (lrand48() & 1) - 1) * (1 + drand48()))
-
 
 /* CÓDIGO ASOCIADO A LA MEDIDA DE CICLOS */
 
@@ -108,10 +106,10 @@ void random_index(int** index, int size) {
 }
 
 int main(int argc, char** argv) {
-    register int i, j, k; // Reordenamos datos 1
-    register int d_index, a_index;
+    int i, j, k; // Reordenamos datos 1
     int N; // Reordenamos datos 2
     double *a, *b, *d;
+    double d_value;
     int *ind; // Reordenamos datos 3 (así esta cerca de d)
     double *c, *e;
     double f;
@@ -142,23 +140,41 @@ int main(int argc, char** argv) {
     start_counter();
 
     // Realizar las operaciones especificadas
-    d_index = 0;
     for (i = 0; i < N; i++) {
         for (j = 0; j < N; j++) {
-            a_index = i * M;
-            for (k = 0; k < M; k++) {
-                d[d_index] += 2 * a[a_index++] * (b[k * N + j] - c[k]);
-            }
-            d_index++;
+            d_value = 0;
+
+            d_value += a[i * M    ] * (b[        j] - c[0]);
+            d_value += a[i * M + 1] * (b[    N + j] - c[1]);
+            d_value += a[i * M + 2] * (b[2 * N + j] - c[2]);
+            d_value += a[i * M + 3] * (b[3 * N + j] - c[3]);
+            d_value += a[i * M + 4] * (b[4 * N + j] - c[4]);
+            d_value += a[i * M + 5] * (b[5 * N + j] - c[5]);
+            d_value += a[i * M + 6] * (b[6 * N + j] - c[6]);
+            d_value += a[i * M + 7] * (b[7 * N + j] - c[7]);
+
+            d[i * N + j] = 2 * d_value;
         }
-    }
-
-    f = 0;
-
-    for (i = 0; i < N; i++) {
         e[i] = d[ind[i] * (N + 1)] / 2;
         f += e[i];
     }
+
+    f = 0;
+    /* Desenrollamos el m.c.d.(todos los posibles valores de N) PERO NO! Después, al traducir a instrucciones vectoriales, queremos que sea múltiplo de 2 -> El más cercano es 8 */
+    for (i = 0; i < N/4; i+=4) {
+        e[i] = d[ind[i] * (N + 1)] / 2;
+        e[i+1] = d[ind[i+1] * (N + 1)] / 2;
+        e[i+2] = d[ind[i+2] * (N + 1)] / 2;
+        e[i+3] = d[ind[i+3] * (N + 1)] / 2;
+        e[i+4] = d[ind[i+4] * (N + 1)] / 2;
+        e[i+5] = d[ind[i+5] * (N + 1)] / 2;
+        e[i+6] = d[ind[i+6] * (N + 1)] / 2;
+        e[i+7] = d[ind[i+7] * (N + 1)] / 2;
+
+        f += e[i] + e[i+1] + e[i+2] + e[i+3] + e[i+4] + e[i+5] + e[i+6] + e[i+7];
+
+    }
+    /*NOTA: HACER BUCLE PARA CONSIDERAR CASOS QUE NO COGEMOS */
 
     ck=get_counter();
 
