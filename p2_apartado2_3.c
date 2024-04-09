@@ -171,6 +171,7 @@ int main(int argc, char** argv) {
     free(c);
     free(e);
     free(ind);
+    free(inv_ind);
 
     exit(EXIT_SUCCESS);
 }

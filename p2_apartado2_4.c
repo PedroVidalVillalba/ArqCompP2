@@ -155,13 +155,11 @@ int main(int argc, char** argv) {
 
             d[i * N + j] = 2 * d_value;
         }
-        e[i] = d[ind[i] * (N + 1)] / 2;
-        f += e[i];
     }
 
     f = 0;
     /* Desenrollamos el m.c.d.(todos los posibles valores de N) PERO NO! Después, al traducir a instrucciones vectoriales, queremos que sea múltiplo de 2 -> El más cercano es 8 */
-    for (i = 0; i < N/4; i+=4) {
+    for (i = 0; i < N - 8; i += 8) {
         e[i] = d[ind[i] * (N + 1)] / 2;
         e[i+1] = d[ind[i+1] * (N + 1)] / 2;
         e[i+2] = d[ind[i+2] * (N + 1)] / 2;
@@ -172,11 +170,13 @@ int main(int argc, char** argv) {
         e[i+7] = d[ind[i+7] * (N + 1)] / 2;
 
         f += e[i] + e[i+1] + e[i+2] + e[i+3] + e[i+4] + e[i+5] + e[i+6] + e[i+7];
-
     }
-    /*NOTA: HACER BUCLE PARA CONSIDERAR CASOS QUE NO COGEMOS */
+    for (; i < N; i++) {
+        e[i] = d[ind[i] * (N + 1)] / 2;
+        f += e[i];
+    }
 
-    ck=get_counter();
+    ck = get_counter();
 
     // Imprimir el valor de f
     printf("%lf\n", f);
