@@ -141,13 +141,12 @@ int main(int argc, char** argv) {
     int N; // Reordenamos datos 2
     double *a, *b, *d;
     int *ind; // Reordenamos datos 3 (así esta cerca de d)
-    int *inv_ind; // Creamos un índice inverso para poder juntar los bucles
     register double *c, *e;
     register double f;
     double ck;
     long line_size = sysconf(_SC_LEVEL1_DCACHE_LINESIZE);
     uint block_size;
-    register __m512d vec_a, vec_b, vec_c, vec_d, vec_e;
+    register __m512d vec_a, vec_b, vec_c, vec_d, vec_aux;
     /* Procesamos los argumentos */
     if (argc != 2) {
         fprintf(stderr, "Formato de ejecución: %s N ", argv[0]);
@@ -167,7 +166,6 @@ int main(int argc, char** argv) {
     transpose(&b, M , N);
     random_array(c, M);
     random_index(&ind, N);
-    inverse_index(&inv_ind, ind, N);
 
     // Comenzamos el contador de ciclos
     start_counter();
@@ -188,23 +186,15 @@ int main(int argc, char** argv) {
         for (j = 0; j < N - N % block_size; j += block_size) {
             for (ii = i; ii < i + block_size; ii++) {
                 vec_a = _mm512_load_pd(a + ii * M);
+                vec_aux = _mm512_mul_pd(vec_a, vec_c);  // Calculamos a * (b - c) como a * b - a * c
                 for (jj = j; jj < j + block_size; jj++) {
                     vec_b = _mm512_load_pd(b + jj * M);
-                    vec_d = _mm512_mul_pd(vec_a, _mm512_sub_pd(vec_b, vec_c));
+                    vec_d = _mm512_fmsub_pd(vec_a, vec_b, vec_aux);
 
                     d[ii * N + jj] = 2 * _mm512_reduce_add_pd(vec_d);
                 }
             }
         }
-        /* e[inv_ind[i    ]] = d[ i      * (N + 1)] / 2; */
-        /* e[inv_ind[i + 1]] = d[(i + 1) * (N + 1)] / 2; */
-        /* e[inv_ind[i + 2]] = d[(i + 2) * (N + 1)] / 2; */
-        /* e[inv_ind[i + 3]] = d[(i + 3) * (N + 1)] / 2; */
-        /* e[inv_ind[i + 4]] = d[(i + 4) * (N + 1)] / 2; */
-        /* e[inv_ind[i + 5]] = d[(i + 5) * (N + 1)] / 2; */
-        /* e[inv_ind[i + 6]] = d[(i + 6) * (N + 1)] / 2; */
-        /* e[inv_ind[i + 7]] = d[(i + 7) * (N + 1)] / 2; */
-        /* f += e[inv_ind[i]] + e[inv_ind[i + 1]] + e[inv_ind[i + 2]] + e[inv_ind[i + 3]] + e[inv_ind[i + 4]] + e[inv_ind[i + 5]] + e[inv_ind[i + 6]] + e[inv_ind[i + 7]]; */
     }
     // Hacer operaciones restantes
     for (i = ii; i < N; i++) {
@@ -215,12 +205,11 @@ int main(int argc, char** argv) {
 
             d[i * N + j] = 2 * _mm512_reduce_add_pd(vec_d);
         }
-        /* e[inv_ind[i]] = d[i * (N + 1)] / 2; */
-        /* f += e[inv_ind[i]]; */
     }
 
+    // El cálculo de e y f es más rápido si se hace en un bucle simple y separado
     for (i = 0; i < N; i++) {
-        e[i] = d[inv_ind[i] * (N + 1)] / 2;
+        e[i] = d[ind[i] * (N + 1)] / 2;
         f += e[i];
     }
 
