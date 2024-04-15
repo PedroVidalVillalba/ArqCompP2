@@ -186,7 +186,7 @@ int main(int argc, char** argv) {
         for (j = 0; j < N - N % block_size; j += block_size) {
             for (ii = i; ii < i + block_size; ii++) {
                 vec_a = _mm512_load_pd(a + ii * M);
-                vec_aux = _mm512_mul_pd(vec_a, vec_c);  // Calculamos a * (b - c) como a * b - a * c
+                vec_aux = _mm512_mul_pd(vec_a, vec_c);  // Calculamos a * (b - c) como a * b - a * c; guardamos a * c en vec_aux
                 for (jj = j; jj < j + block_size; jj++) {
                     vec_b = _mm512_load_pd(b + jj * M);
                     vec_d = _mm512_fmsub_pd(vec_a, vec_b, vec_aux);
@@ -226,7 +226,6 @@ int main(int argc, char** argv) {
     _mm_free(c);
     _mm_free(e);
     _mm_free(ind);
-    _mm_free(inv_ind);
 
     exit(EXIT_SUCCESS);
 }
