@@ -189,7 +189,7 @@ int main(int argc, char** argv) {
             for (ii = i; ii < i + block_size; ii++) {
                 vec_a = _mm512_load_pd(a + ii * M);
                 for (jj = j; jj < j + block_size; jj++) {
-                    vec_b = _mm512_load_pd(b + jj * N);
+                    vec_b = _mm512_load_pd(b + jj * M);
                     vec_d = _mm512_mul_pd(vec_a, _mm512_sub_pd(vec_b, vec_c));
 
                     d[ii * N + jj] = 2 * _mm512_reduce_add_pd(vec_d);
@@ -210,7 +210,7 @@ int main(int argc, char** argv) {
     for (i = ii; i < N; i++) {
         vec_a = _mm512_load_pd(a + i * M);
         for (j = jj; j < N; j++) {
-            vec_b = _mm512_load_pd(b + j * N);
+            vec_b = _mm512_load_pd(b + j * M);
             vec_d = _mm512_mul_pd(vec_a, _mm512_sub_pd(vec_b, vec_c));
 
             d[i * N + j] = 2 * _mm512_reduce_add_pd(vec_d);

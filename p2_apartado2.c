@@ -119,9 +119,24 @@ void inverse_index(int** inv_index, const int* index, int size) {
     }
 }
 
+void transpose(double** matrix, int rows, int columns) {
+    int i, j;
+    long line_size = sysconf(_SC_LEVEL1_DCACHE_LINESIZE);
+    double* transpose = (double *) _mm_malloc(rows * columns * sizeof(double), line_size);
+
+    for (i = 0; i < rows; i++) {
+        for (j = 0; j < columns; j++) {
+            transpose[j * rows + i] = (*matrix)[i * columns + j];
+        }
+    }
+
+    _mm_free(*matrix);
+    *matrix = transpose;
+}
+
 int main(int argc, char** argv) {
     register int i, j; // Reordenamos datos 1
-    register int a_index;
+    register int a_index, b_index;
     register int ii, jj;
     int N; // Reordenamos datos 2
     double *a, *b, *d;
@@ -150,6 +165,7 @@ int main(int argc, char** argv) {
     srand48(RAND_SEED);
     random_matrix(a, N, M);
     random_matrix(b, M, N);
+    transpose(&b, M, N);
     random_array(c, M);
     random_index(&ind, N);
     inverse_index(&inv_ind, ind, N);
@@ -174,15 +190,16 @@ int main(int argc, char** argv) {
                 for (jj = j; jj < j + block_size; jj++) {
                     d_value = 0;
                     a_index = ii * M;
+                    b_index = jj * M;
 
-                    d_value += a[a_index++] * (b[        jj] - c[0]);
-                    d_value += a[a_index++] * (b[    N + jj] - c[1]);
-                    d_value += a[a_index++] * (b[2 * N + jj] - c[2]);
-                    d_value += a[a_index++] * (b[3 * N + jj] - c[3]);
-                    d_value += a[a_index++] * (b[4 * N + jj] - c[4]);
-                    d_value += a[a_index++] * (b[5 * N + jj] - c[5]);
-                    d_value += a[a_index++] * (b[6 * N + jj] - c[6]);
-                    d_value += a[a_index  ] * (b[7 * N + jj] - c[7]);
+                    d_value += a[a_index++] * (b[b_index++] - c[0]);
+                    d_value += a[a_index++] * (b[b_index++] - c[1]);
+                    d_value += a[a_index++] * (b[b_index++] - c[2]);
+                    d_value += a[a_index++] * (b[b_index++] - c[3]);
+                    d_value += a[a_index++] * (b[b_index++] - c[4]);
+                    d_value += a[a_index++] * (b[b_index++] - c[5]);
+                    d_value += a[a_index++] * (b[b_index++] - c[6]);
+                    d_value += a[a_index  ] * (b[b_index  ] - c[7]);
 
                     d[ii * N + jj] = 2 * d_value;
                 }
@@ -201,17 +218,18 @@ int main(int argc, char** argv) {
     // Hacer operaciones restantes
     for (i = ii; i < N; i++) {
         for (j = jj; j < N; j++) {
-            a_index = i * M;
             d_value = 0;
+            a_index = i * M;
+            b_index = j * M;
 
-            d_value += a[a_index++] * (b[        j] - c[0]);
-            d_value += a[a_index++] * (b[    N + j] - c[1]);
-            d_value += a[a_index++] * (b[2 * N + j] - c[2]);
-            d_value += a[a_index++] * (b[3 * N + j] - c[3]);
-            d_value += a[a_index++] * (b[4 * N + j] - c[4]);
-            d_value += a[a_index++] * (b[5 * N + j] - c[5]);
-            d_value += a[a_index++] * (b[6 * N + j] - c[6]);
-            d_value += a[a_index  ] * (b[7 * N + j] - c[7]);
+            d_value += a[a_index++] * (b[b_index++] - c[0]);
+            d_value += a[a_index++] * (b[b_index++] - c[1]);
+            d_value += a[a_index++] * (b[b_index++] - c[2]);
+            d_value += a[a_index++] * (b[b_index++] - c[3]);
+            d_value += a[a_index++] * (b[b_index++] - c[4]);
+            d_value += a[a_index++] * (b[b_index++] - c[5]);
+            d_value += a[a_index++] * (b[b_index++] - c[6]);
+            d_value += a[a_index  ] * (b[b_index  ] - c[7]);
 
             d[i * N + j] = 2 * d_value;
         }
