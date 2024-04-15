@@ -122,19 +122,17 @@ void inverse_index(int** inv_index, const int* index, int size) {
 
 int main(int argc, char** argv) {
     register int i, j; // Reordenamos datos 1
-    register int a_index;
     register int ii, jj;
     int N; // Reordenamos datos 2
-    double *a, *b, *d;
-    register double d_value;
-    int *ind; // Reordenamos datos 3 (así esta cerca de d)
-    int *inv_ind; // Creamos un índice inverso para poder juntar los bucles
-    double *c, *e;
-    double f;
+    register double *a, *b, *d;
+    register int *ind; // Reordenamos datos 3 (así esta cerca de d)
+    register int *inv_ind; // Creamos un índice inverso para poder juntar los bucles
+    register double *c, *e;
+    register double f;
     double ck;
     long line_size = sysconf(_SC_LEVEL1_DCACHE_LINESIZE);
     uint block_size;
-    __m512d vec_a, vec_b, vec_c, vec_d, vec_e;
+    register __m512d vec_a, vec_b, vec_c, vec_d, vec_e;
     /* Procesamos los argumentos */
     if (argc != 2) {
         fprintf(stderr, "Formato de ejecución: %s N ", argv[0]);
