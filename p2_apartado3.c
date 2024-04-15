@@ -169,13 +169,13 @@ int main(int argc, char** argv) {
     block_size = line_size / sizeof(double);
 
     f = 0;
+    vec_c = _mm512_load_pd(c);  // Cargamos el vector c, que ya es de tamaño 8
     for (i = 0; i < N - N % block_size ; i += block_size) {
         for (j = 0; j < N - N % block_size; j += block_size) {
             for (ii = i; ii < i + block_size; ii++) {
+                vec_a = _mm512_load_pd(&a[ii * M]);
                 for (jj = j; jj < j + block_size; jj++) {
-                    vec_a = _mm512_load_pd(&a[ii * M]);
                     vec_b = _mm512_setr_pd(b[jj], b[N + jj], b[2 * N + jj], b[3 * N + jj], b[4 * N + jj], b[5 * N + jj], b[6 * N + jj], b[7 * N + jj]);
-                    vec_c = _mm512_load_pd(c);  // Cargamos el vector c, que ya es de tamaño 8
                     vec_d = _mm512_mul_pd(vec_a, _mm512_sub_pd(vec_b, vec_c));
 
                     d[ii * N + jj] = 2 * _mm512_reduce_add_pd(vec_d);
@@ -194,19 +194,18 @@ int main(int argc, char** argv) {
     }
     // Hacer operaciones restantes
     for (i = ii; i < N; i++) {
+        vec_a = _mm512_load_pd(&a[i * M]);
         for (j = jj; j < N; j++) {
-            vec_a = _mm512_load_pd(&a[i * M]);
             vec_b = _mm512_setr_pd(b[j], b[N + j], b[2 * N + j], b[3 * N + j], b[4 * N + j], b[5 * N + j], b[6 * N + j], b[7 * N + j]);
-            vec_c = _mm512_load_pd(c);  // Cargamos el vector c, que ya es de tamaño 8
             vec_d = _mm512_mul_pd(vec_a, _mm512_sub_pd(vec_b, vec_c));
 
-            d[ii * N + jj] = 2 * _mm512_reduce_add_pd(vec_d);
+            d[i * N + j] = 2 * _mm512_reduce_add_pd(vec_d);
         }
         e[inv_ind[i]] = d[i * (N + 1)] / 2;
         f += e[inv_ind[i]];
     }
 
-    ck=get_counter();
+    ck = get_counter();
 
     // Imprimir el valor de f
     printf("%lf\n", f);
