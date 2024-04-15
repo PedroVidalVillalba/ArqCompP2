@@ -120,13 +120,28 @@ void inverse_index(int** inv_index, const int* index, int size) {
     }
 }
 
+void transpose(double** matrix, int rows, int columns) {
+    int i, j;
+    long line_size = sysconf(_SC_LEVEL1_DCACHE_LINESIZE);
+    double* transpose = (double *) _mm_malloc(rows * columns * sizeof(double), line_size);
+
+    for (i = 0; i < rows; i++) {
+        for (j = 0; j < columns; j++) {
+            transpose[j * rows + i] = (*matrix)[i * columns + j];
+        }
+    }
+
+    _mm_free(*matrix);
+    *matrix = transpose;
+}
+
 int main(int argc, char** argv) {
     register int i, j; // Reordenamos datos 1
     register int ii, jj;
     int N; // Reordenamos datos 2
-    register double *a, *b, *d;
-    register int *ind; // Reordenamos datos 3 (así esta cerca de d)
-    register int *inv_ind; // Creamos un índice inverso para poder juntar los bucles
+    double *a, *b, *d;
+    int *ind; // Reordenamos datos 3 (así esta cerca de d)
+    int *inv_ind; // Creamos un índice inverso para poder juntar los bucles
     register double *c, *e;
     register double f;
     double ck;
@@ -149,6 +164,7 @@ int main(int argc, char** argv) {
     srand48(RAND_SEED);
     random_matrix(a, N, M);
     random_matrix(b, M, N);
+    transpose(&b, M , N);
     random_array(c, M);
     random_index(&ind, N);
     inverse_index(&inv_ind, ind, N);
@@ -171,9 +187,9 @@ int main(int argc, char** argv) {
     for (i = 0; i < N - N % block_size ; i += block_size) {
         for (j = 0; j < N - N % block_size; j += block_size) {
             for (ii = i; ii < i + block_size; ii++) {
-                vec_a = _mm512_load_pd(&a[ii * M]);
+                vec_a = _mm512_load_pd(a + ii * M);
                 for (jj = j; jj < j + block_size; jj++) {
-                    vec_b = _mm512_setr_pd(b[jj], b[N + jj], b[2 * N + jj], b[3 * N + jj], b[4 * N + jj], b[5 * N + jj], b[6 * N + jj], b[7 * N + jj]);
+                    vec_b = _mm512_load_pd(b + jj * N);
                     vec_d = _mm512_mul_pd(vec_a, _mm512_sub_pd(vec_b, vec_c));
 
                     d[ii * N + jj] = 2 * _mm512_reduce_add_pd(vec_d);
@@ -192,9 +208,9 @@ int main(int argc, char** argv) {
     }
     // Hacer operaciones restantes
     for (i = ii; i < N; i++) {
-        vec_a = _mm512_load_pd(&a[i * M]);
+        vec_a = _mm512_load_pd(a + i * M);
         for (j = jj; j < N; j++) {
-            vec_b = _mm512_setr_pd(b[j], b[N + j], b[2 * N + j], b[3 * N + j], b[4 * N + j], b[5 * N + j], b[6 * N + j], b[7 * N + j]);
+            vec_b = _mm512_load_pd(b + j * N);
             vec_d = _mm512_mul_pd(vec_a, _mm512_sub_pd(vec_b, vec_c));
 
             d[i * N + j] = 2 * _mm512_reduce_add_pd(vec_d);
