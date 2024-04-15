@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <time.h>
+#include <pmmintrin.h>
 
 #define M 8
 
@@ -125,10 +126,10 @@ int main(int argc, char** argv) {
     }
     N = atoi(argv[1]);
 
-    a = (double *) malloc(N * M * sizeof(double));
-    b = (double *) malloc(M * N * sizeof(double));
-    c = (double *) malloc(M * sizeof(double));
-    e = (double *) malloc(N * sizeof(double));
+    a = (double *) _mm_malloc(N * M * sizeof(double), line_size);
+    b = (double *) _mm_malloc(M * N * sizeof(double), line_size);
+    c = (double *) _mm_malloc(M * sizeof(double), line_size);
+    e = (double *) _mm_malloc(N * sizeof(double), line_size);
 
     srand48(RAND_SEED);
     random_matrix(a, N, M);
@@ -137,7 +138,7 @@ int main(int argc, char** argv) {
     random_index(&ind, N);
 
     // Inicialización de todas las componentes de d a cero
-    d = (double *) calloc(N * N, sizeof(double));
+    d = (double *) _mm_malloc(N * N * sizeof(double), line_size);
 
     // Comenzamos el contador de ciclos
     start_counter();
@@ -145,23 +146,22 @@ int main(int argc, char** argv) {
     // Realizar las operaciones por bloques especificadas
     uint block_size = line_size / sizeof(double);
 
-    for (i=0; i < N - block_size ; i+=block_size)
-        for (j=0; j < N - block_size; j+=block_size)
-                for (ii=i; ii<i+block_size; ii++) {
-                    for (jj=j; jj<j+block_size; jj++){
-                        for (k=0; k < M; k++){
-                            d[ii * N + jj] += a[ii * M + k] * (b[k * N + jj] - c[k]);
-                        }
-                        d[ii * N + jj] *=2;
+    for (i = 0; i < N - block_size ; i += block_size) {
+        for (j = 0; j < N - block_size; j += block_size) {
+            for (ii = i; ii < i + block_size; ii++) {
+                for (jj = j; jj < j + block_size; jj++){
+                    for (k = 0; k < M; k++){
+                        d[ii * N + jj] += a[ii * M + k] * (b[k * N + jj] - c[k]);
                     }
-
+                    d[ii * N + jj] *=2;
                 }
-
-
+            }
+        }
+    }
     // Hacer operaciones restantes
-    for(i = ii; i < N; i++) {
-        for(j = jj; j < N; j++){
-            for(k=0; k < M; k++){
+    for (i = ii; i < N; i++) {
+        for (j = jj; j < N; j++) {
+            for (k = 0; k < M; k++) {
                 d[i * N + j] += a[i * M + k] * (b[k * N + j] - c[k]);
             }
             d[i * N + j] *=2;
@@ -169,26 +169,24 @@ int main(int argc, char** argv) {
     }
 
     f = 0;
-
     for (i = 0; i < N; i++) {
         e[i] = d[ind[i] * (N + 1)] / 2;
         f += e[i];
     }
 
-    ck=get_counter();
+    ck = get_counter();
 
     // Imprimir el valor de f
     printf("%lf\n", f);
 
     printf("\n Clocks=%1.10lf \n",ck);
 
-    free(a);
-    free(b);
-    free(d);
-    free(c);
-    free(e);
+    _mm_free(a);
+    _mm_free(b);
+    _mm_free(d);
+    _mm_free(c);
+    _mm_free(e);
     free(ind);
 
     exit(EXIT_SUCCESS);
 }
-

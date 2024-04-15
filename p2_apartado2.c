@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <time.h>
+#include <pmmintrin.h>
 
 #define M 8
 
@@ -91,8 +92,9 @@ void random_array(double* array, int size) {
 void random_index(int** index, int size) {
     int i, j;
     int temp;
+    long line_size = sysconf(_SC_LEVEL1_DCACHE_LINESIZE);
 
-    *index = (int *) malloc(size * sizeof(int));
+    *index = (int *) _mm_malloc(size * sizeof(int), line_size);
     for (i = 0; i < size; i++) {
         (*index)[i] = i;
     }
@@ -107,14 +109,25 @@ void random_index(int** index, int size) {
     }
 }
 
+void inverse_index(int** inv_index, const int* index, int size) {
+    int i;
+    long line_size = sysconf(_SC_LEVEL1_DCACHE_LINESIZE);
+
+    *inv_index = (int *) _mm_malloc(size * sizeof(int), line_size);
+    for (i = 0; i < size; i++) {
+        (*inv_index)[index[i]] = i;
+    }
+}
+
 int main(int argc, char** argv) {
-    register int i, j, k; // Reordenamos datos 1
-    register int d_index, a_index;
-    int ii, jj;
+    register int i, j; // Reordenamos datos 1
+    register int a_index;
+    register int ii, jj;
     int N; // Reordenamos datos 2
     double *a, *b, *d;
     register double d_value;
     int *ind; // Reordenamos datos 3 (así esta cerca de d)
+    int *inv_ind; // Creamos un índice inverso para poder juntar los bucles
     double *c, *e;
     double f;
     double ck;
@@ -128,19 +141,18 @@ int main(int argc, char** argv) {
     }
     N = atoi(argv[1]);
 
-    a = (double *) malloc(N * M * sizeof(double));
-    b = (double *) malloc(M * N * sizeof(double));
-    c = (double *) malloc(M * sizeof(double));
-    e = (double *) malloc(N * sizeof(double));
+    a = (double *) _mm_malloc(N * M * sizeof(double), line_size);
+    b = (double *) _mm_malloc(M * N * sizeof(double), line_size);
+    d = (double *) _mm_malloc(N * N * sizeof(double), line_size);
+    c = (double *) _mm_malloc(M * sizeof(double), line_size);
+    e = (double *) _mm_malloc(N * sizeof(double), line_size);
 
     srand48(RAND_SEED);
     random_matrix(a, N, M);
     random_matrix(b, M, N);
     random_array(c, M);
     random_index(&ind, N);
-
-    // Inicialización de todas las componentes de d a cero
-    d = (double *) calloc(N * N, sizeof(double));
+    inverse_index(&inv_ind, ind, N);
 
     // Comenzamos el contador de ciclos
     start_counter();
@@ -150,62 +162,61 @@ int main(int argc, char** argv) {
      *
      * NOTA: HEMOS USADO OPERACIONES p2_apartado_2_1.c sin d_index porque es una movida con bloques. Hemos usado p2_apartado2_5.c y p2_apartado2_4.c para el desenrrollamiento con d_value en registro.
      * RESULTADO N=3500 CÓDIGO: 612729748
-     * RESULTADO N=3500 O3: 58013340
+     * RESULTADO N=3500 O3:      58013340
      */
-
 
     block_size = line_size / sizeof(double);
 
-    for (i=0; i < N - block_size ; i+=block_size)
-        for (j=0; j < N - block_size; j+=block_size)
-            for (ii=i; ii<i+block_size; ii++) {
-                for (jj=j; jj<j+block_size; jj++){
+    f = 0;
+    for (i = 0; i < N - N % block_size ; i += block_size) {
+        for (j = 0; j < N - N % block_size; j += block_size) {
+            for (ii = i; ii < i + block_size; ii++) {
+                for (jj = j; jj < j + block_size; jj++) {
                     d_value = 0;
                     a_index = ii * M;
 
-                    d_value += a[a_index   ] * (b[        jj] - c[0]);
-                    d_value += a[a_index + 1] * (b[    N + jj] - c[1]);
-                    d_value += a[a_index + 2] * (b[2 * N + jj] - c[2]);
-                    d_value += a[a_index + 3] * (b[3 * N + jj] - c[3]);
-                    d_value += a[a_index + 4] * (b[4 * N + jj] - c[4]);
-                    d_value += a[a_index + 5] * (b[5 * N + jj] - c[5]);
-                    d_value += a[a_index + 6] * (b[6 * N + jj] - c[6]);
-                    d_value += a[a_index + 7] * (b[7 * N + jj] - c[7]);
+                    d_value += a[a_index++] * (b[        jj] - c[0]);
+                    d_value += a[a_index++] * (b[    N + jj] - c[1]);
+                    d_value += a[a_index++] * (b[2 * N + jj] - c[2]);
+                    d_value += a[a_index++] * (b[3 * N + jj] - c[3]);
+                    d_value += a[a_index++] * (b[4 * N + jj] - c[4]);
+                    d_value += a[a_index++] * (b[5 * N + jj] - c[5]);
+                    d_value += a[a_index++] * (b[6 * N + jj] - c[6]);
+                    d_value += a[a_index  ] * (b[7 * N + jj] - c[7]);
 
                     d[ii * N + jj] = 2 * d_value;
                 }
-
             }
-
-    // Hacer operaciones restantes
-    for(i = ii; i < N; i++) {
-        for(j = jj; j < N; j++){
-            a_index = i * M;
-            for(k=0; k < M; k++){
-                d[i * N + j] += a[a_index++] * (b[k * N + j] - c[k]);
-            }
-            d[i * N + j] *=2;
         }
+        e[inv_ind[i    ]] = d[ i      * (N + 1)] / 2;
+        e[inv_ind[i + 1]] = d[(i + 1) * (N + 1)] / 2;
+        e[inv_ind[i + 2]] = d[(i + 2) * (N + 1)] / 2;
+        e[inv_ind[i + 3]] = d[(i + 3) * (N + 1)] / 2;
+        e[inv_ind[i + 4]] = d[(i + 4) * (N + 1)] / 2;
+        e[inv_ind[i + 5]] = d[(i + 5) * (N + 1)] / 2;
+        e[inv_ind[i + 6]] = d[(i + 6) * (N + 1)] / 2;
+        e[inv_ind[i + 7]] = d[(i + 7) * (N + 1)] / 2;
+        f += e[inv_ind[i]] + e[inv_ind[i + 1]] + e[inv_ind[i + 2]] + e[inv_ind[i + 3]] + e[inv_ind[i + 4]] + e[inv_ind[i + 5]] + e[inv_ind[i + 6]] + e[inv_ind[i + 7]];
     }
+    // Hacer operaciones restantes
+    for (i = ii; i < N; i++) {
+        for (j = jj; j < N; j++) {
+            a_index = i * M;
+            d_value = 0;
 
-    f = 0;
+            d_value += a[a_index++] * (b[        j] - c[0]);
+            d_value += a[a_index++] * (b[    N + j] - c[1]);
+            d_value += a[a_index++] * (b[2 * N + j] - c[2]);
+            d_value += a[a_index++] * (b[3 * N + j] - c[3]);
+            d_value += a[a_index++] * (b[4 * N + j] - c[4]);
+            d_value += a[a_index++] * (b[5 * N + j] - c[5]);
+            d_value += a[a_index++] * (b[6 * N + j] - c[6]);
+            d_value += a[a_index  ] * (b[7 * N + j] - c[7]);
 
-    /* Desenrollamos el m.c.d.(todos los posibles valores de N) PERO NO! Después, al traducir a instrucciones vectoriales, queremos que sea múltiplo de 2 -> El más cercano es 8 */
-    for (i = 0; i < N - 8; i += 8) {
-        e[i] = d[ind[i] * (N + 1)] / 2;
-        e[i+1] = d[ind[i+1] * (N + 1)] / 2;
-        e[i+2] = d[ind[i+2] * (N + 1)] / 2;
-        e[i+3] = d[ind[i+3] * (N + 1)] / 2;
-        e[i+4] = d[ind[i+4] * (N + 1)] / 2;
-        e[i+5] = d[ind[i+5] * (N + 1)] / 2;
-        e[i+6] = d[ind[i+6] * (N + 1)] / 2;
-        e[i+7] = d[ind[i+7] * (N + 1)] / 2;
-
-        f += e[i] + e[i+1] + e[i+2] + e[i+3] + e[i+4] + e[i+5] + e[i+6] + e[i+7];
-    }
-    for (; i < N; i++) {
-        e[i] = d[ind[i] * (N + 1)] / 2;
-        f += e[i];
+            d[i * N + j] = 2 * d_value;
+        }
+        e[inv_ind[i]] = d[i * (N + 1)] / 2;
+        f += e[inv_ind[i]];
     }
 
     ck=get_counter();
@@ -215,12 +226,13 @@ int main(int argc, char** argv) {
 
     printf("\n Clocks=%1.10lf \n",ck);
 
-    free(a);
-    free(b);
-    free(d);
-    free(c);
-    free(e);
-    free(ind);
+    _mm_free(a);
+    _mm_free(b);
+    _mm_free(d);
+    _mm_free(c);
+    _mm_free(e);
+    _mm_free(ind);
+    _mm_free(inv_ind);
 
     exit(EXIT_SUCCESS);
 }

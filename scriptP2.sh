@@ -22,7 +22,8 @@ gcc p2_apartado2_2.c  -o p22_2 -O0
 gcc p2_apartado2_3.c  -o p22_3 -O0
 gcc p2_apartado2_4.c  -o p22_4 -O0
 gcc p2_apartado2_5.c  -o p22_5 -O0
-#gcc p2_apartado3.c  -o p23 -O0 -march=native
+gcc p2_apartado2.c  -o p22 -O0
+# gcc p2_apartado3.c  -o p23 -O0 -march=native
 #
 #gcc p2_apartado4.c  -o p24o0 -O0 -fopenmp
 #gcc p2_apartado4.c  -o p24o2 -O2 -fopenmp
@@ -65,6 +66,10 @@ echo $F7
 echo "Ejercicio 2_5"
 F8=`./p22_5 $N`
 echo $F8
+
+echo "Ejercicio 2"
+F9=`./p22 $N`
+echo $F9
 #echo "Ejercicio 4 o0"
 #F6=`./p24o0 $N $C`
 #echo $F6
