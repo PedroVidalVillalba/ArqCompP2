@@ -196,15 +196,15 @@ int main(int argc, char** argv) {
                 }
             }
         }
-        e[inv_ind[i    ]] = d[ i      * (N + 1)] / 2;
-        e[inv_ind[i + 1]] = d[(i + 1) * (N + 1)] / 2;
-        e[inv_ind[i + 2]] = d[(i + 2) * (N + 1)] / 2;
-        e[inv_ind[i + 3]] = d[(i + 3) * (N + 1)] / 2;
-        e[inv_ind[i + 4]] = d[(i + 4) * (N + 1)] / 2;
-        e[inv_ind[i + 5]] = d[(i + 5) * (N + 1)] / 2;
-        e[inv_ind[i + 6]] = d[(i + 6) * (N + 1)] / 2;
-        e[inv_ind[i + 7]] = d[(i + 7) * (N + 1)] / 2;
-        f += e[inv_ind[i]] + e[inv_ind[i + 1]] + e[inv_ind[i + 2]] + e[inv_ind[i + 3]] + e[inv_ind[i + 4]] + e[inv_ind[i + 5]] + e[inv_ind[i + 6]] + e[inv_ind[i + 7]];
+        /* e[inv_ind[i    ]] = d[ i      * (N + 1)] / 2; */
+        /* e[inv_ind[i + 1]] = d[(i + 1) * (N + 1)] / 2; */
+        /* e[inv_ind[i + 2]] = d[(i + 2) * (N + 1)] / 2; */
+        /* e[inv_ind[i + 3]] = d[(i + 3) * (N + 1)] / 2; */
+        /* e[inv_ind[i + 4]] = d[(i + 4) * (N + 1)] / 2; */
+        /* e[inv_ind[i + 5]] = d[(i + 5) * (N + 1)] / 2; */
+        /* e[inv_ind[i + 6]] = d[(i + 6) * (N + 1)] / 2; */
+        /* e[inv_ind[i + 7]] = d[(i + 7) * (N + 1)] / 2; */
+        /* f += e[inv_ind[i]] + e[inv_ind[i + 1]] + e[inv_ind[i + 2]] + e[inv_ind[i + 3]] + e[inv_ind[i + 4]] + e[inv_ind[i + 5]] + e[inv_ind[i + 6]] + e[inv_ind[i + 7]]; */
     }
     // Hacer operaciones restantes
     for (i = ii; i < N; i++) {
@@ -215,8 +215,13 @@ int main(int argc, char** argv) {
 
             d[i * N + j] = 2 * _mm512_reduce_add_pd(vec_d);
         }
-        e[inv_ind[i]] = d[i * (N + 1)] / 2;
-        f += e[inv_ind[i]];
+        /* e[inv_ind[i]] = d[i * (N + 1)] / 2; */
+        /* f += e[inv_ind[i]]; */
+    }
+
+    for (i = 0; i < N; i++) {
+        e[i] = d[inv_ind[i] * (N + 1)] / 2;
+        f += e[i];
     }
 
     ck = get_counter();
