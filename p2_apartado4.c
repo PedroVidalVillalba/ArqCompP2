@@ -13,6 +13,7 @@
 #include <unistd.h>
 #include <time.h>
 #include <pmmintrin.h>
+#include <omp.h>
 
 #define M 8
 
@@ -139,6 +140,7 @@ int main(int argc, char** argv) {
     register int a_index, b_index;
     register int ii, jj;
     int N; // Reordenamos datos 2
+    int C;
     double *a, *b, *d;
     register double d_value;
     int *ind; // Reordenamos datos 3 (así esta cerca de d)
@@ -150,11 +152,12 @@ int main(int argc, char** argv) {
     register uint block_size;
 
     /* Procesamos los argumentos */
-    if (argc != 2) {
-        fprintf(stderr, "Formato de ejecución: %s N ", argv[0]);
+    if (argc != 3) {
+        fprintf(stderr, "Formato de ejecución: %s N C", argv[0]);
         exit(EXIT_FAILURE);
     }
     N = atoi(argv[1]);
+    C = atoi(argv[2]);
 
     a = (double *) _mm_malloc(N * M * sizeof(double), line_size);
     b = (double *) _mm_malloc(M * N * sizeof(double), line_size);
@@ -184,66 +187,78 @@ int main(int argc, char** argv) {
     block_size = line_size / sizeof(double);
 
     f = 0;
-    for (i = 0; i < N - N % block_size ; i += block_size) {
-        for (j = 0; j < N - N % block_size; j += block_size) {
-            for (ii = i; ii < i + block_size; ii++) {
-                for (jj = j; jj < j + block_size; jj++) {
-                    d_value = 0;
-                    a_index = ii * M;
-                    b_index = jj * M;
 
-                    d_value += a[a_index++] * (b[b_index++] - c[0]);
-                    d_value += a[a_index++] * (b[b_index++] - c[1]);
-                    d_value += a[a_index++] * (b[b_index++] - c[2]);
-                    d_value += a[a_index++] * (b[b_index++] - c[3]);
-                    d_value += a[a_index++] * (b[b_index++] - c[4]);
-                    d_value += a[a_index++] * (b[b_index++] - c[5]);
-                    d_value += a[a_index++] * (b[b_index++] - c[6]);
-                    d_value += a[a_index  ] * (b[b_index  ] - c[7]);
 
-                    d[ii * N + jj] = 2 * d_value;
+#pragma omp parallel private(i, j, ii, jj, d_value, a_index, b_index) num_threads (C)
+    {
+        register double private_f = 0;
+#pragma omp for
+        for (i = 0; i < N - N % block_size; i += block_size) {
+            for (j = 0; j < N - N % block_size; j += block_size) {
+                for (ii = i; ii < i + block_size; ii++) {
+                    for (jj = j; jj < j + block_size; jj++) {
+                        d_value = 0;
+                        a_index = ii * M;
+                        b_index = jj * M;
+
+                        d_value += a[a_index++] * (b[b_index++] - c[0]);
+                        d_value += a[a_index++] * (b[b_index++] - c[1]);
+                        d_value += a[a_index++] * (b[b_index++] - c[2]);
+                        d_value += a[a_index++] * (b[b_index++] - c[3]);
+                        d_value += a[a_index++] * (b[b_index++] - c[4]);
+                        d_value += a[a_index++] * (b[b_index++] - c[5]);
+                        d_value += a[a_index++] * (b[b_index++] - c[6]);
+                        d_value += a[a_index] * (b[b_index] - c[7]);
+
+                        d[ii * N + jj] = 2 * d_value;
+                    }
                 }
             }
+            e[inv_ind[i]] = d[i * (N + 1)] / 2;
+            e[inv_ind[i + 1]] = d[(i + 1) * (N + 1)] / 2;
+            e[inv_ind[i + 2]] = d[(i + 2) * (N + 1)] / 2;
+            e[inv_ind[i + 3]] = d[(i + 3) * (N + 1)] / 2;
+            e[inv_ind[i + 4]] = d[(i + 4) * (N + 1)] / 2;
+            e[inv_ind[i + 5]] = d[(i + 5) * (N + 1)] / 2;
+            e[inv_ind[i + 6]] = d[(i + 6) * (N + 1)] / 2;
+            e[inv_ind[i + 7]] = d[(i + 7) * (N + 1)] / 2;
+            f += e[inv_ind[i]] + e[inv_ind[i + 1]] + e[inv_ind[i + 2]] + e[inv_ind[i + 3]] + e[inv_ind[i + 4]] +
+                 e[inv_ind[i + 5]] + e[inv_ind[i + 6]] + e[inv_ind[i + 7]];
         }
-        e[inv_ind[i    ]] = d[ i      * (N + 1)] / 2;
-        e[inv_ind[i + 1]] = d[(i + 1) * (N + 1)] / 2;
-        e[inv_ind[i + 2]] = d[(i + 2) * (N + 1)] / 2;
-        e[inv_ind[i + 3]] = d[(i + 3) * (N + 1)] / 2;
-        e[inv_ind[i + 4]] = d[(i + 4) * (N + 1)] / 2;
-        e[inv_ind[i + 5]] = d[(i + 5) * (N + 1)] / 2;
-        e[inv_ind[i + 6]] = d[(i + 6) * (N + 1)] / 2;
-        e[inv_ind[i + 7]] = d[(i + 7) * (N + 1)] / 2;
-        f += e[inv_ind[i]] + e[inv_ind[i + 1]] + e[inv_ind[i + 2]] + e[inv_ind[i + 3]] + e[inv_ind[i + 4]] + e[inv_ind[i + 5]] + e[inv_ind[i + 6]] + e[inv_ind[i + 7]];
-    }
-    // Hacer operaciones restantes
-    for (i = ii; i < N; i++) {
-        for (j = jj; j < N; j++) {
-            d_value = 0;
-            a_index = i * M;
-            b_index = j * M;
 
-            d_value += a[a_index++] * (b[b_index++] - c[0]);
-            d_value += a[a_index++] * (b[b_index++] - c[1]);
-            d_value += a[a_index++] * (b[b_index++] - c[2]);
-            d_value += a[a_index++] * (b[b_index++] - c[3]);
-            d_value += a[a_index++] * (b[b_index++] - c[4]);
-            d_value += a[a_index++] * (b[b_index++] - c[5]);
-            d_value += a[a_index++] * (b[b_index++] - c[6]);
-            d_value += a[a_index  ] * (b[b_index  ] - c[7]);
 
-            d[i * N + j] = 2 * d_value;
+        // Hacer operaciones restantes
+        for (i = ii; i < N; i++) {
+            for (j = jj; j < N; j++) {
+                d_value = 0;
+                a_index = i * M;
+                b_index = j * M;
+
+                d_value += a[a_index++] * (b[b_index++] - c[0]);
+                d_value += a[a_index++] * (b[b_index++] - c[1]);
+                d_value += a[a_index++] * (b[b_index++] - c[2]);
+                d_value += a[a_index++] * (b[b_index++] - c[3]);
+                d_value += a[a_index++] * (b[b_index++] - c[4]);
+                d_value += a[a_index++] * (b[b_index++] - c[5]);
+                d_value += a[a_index++] * (b[b_index++] - c[6]);
+                d_value += a[a_index  ] * (b[b_index  ] - c[7]);
+
+                d[i * N + j] = 2 * d_value;
+            }
+            e[inv_ind[i]] = d[i * (N + 1)] / 2;
+            private_f += e[inv_ind[i]];
         }
-        e[inv_ind[i]] = d[i * (N + 1)] / 2;
-        f += e[inv_ind[i]];
+#pragma omp atomic
+            f += private_f;
     }
 
-    ck=get_counter();
+    ck = get_counter();
 
     // Imprimir el valor de f
 #ifndef DEBUG
     printf("%lf\n", f);
 #else   //DEBUG
-    printf("%14.2lf\n", ck);
+    printf("%12.2lf\n", ck);
 #endif  //DEBUG
 
     _mm_free(a);

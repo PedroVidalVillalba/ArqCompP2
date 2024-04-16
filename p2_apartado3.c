@@ -145,7 +145,7 @@ int main(int argc, char** argv) {
     register double f;
     double ck;
     long line_size = sysconf(_SC_LEVEL1_DCACHE_LINESIZE);
-    uint block_size;
+    register uint block_size;
     register __m512d vec_a, vec_b, vec_c, vec_d, vec_aux;
     /* Procesamos los argumentos */
     if (argc != 2) {
@@ -219,7 +219,7 @@ int main(int argc, char** argv) {
 #ifndef DEBUG
     printf("%lf\n", f);
 #else   //DEBUG
-    printf("%12.2lf\n", ck);
+    printf("%14.2lf\n", ck);
 #endif  //DEBUG
 
     _mm_free(a);

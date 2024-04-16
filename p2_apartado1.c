@@ -181,7 +181,7 @@ int main(int argc, char** argv) {
 #ifndef DEBUG
     printf("%lf\n", f);
 #else   //DEBUG
-    printf("%12.2lf\n", ck);
+    printf("%14.2lf\n", ck);
 #endif  //DEBUG
 
     free_matrix(a, N, M);
