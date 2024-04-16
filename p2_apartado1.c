@@ -178,9 +178,11 @@ int main(int argc, char** argv) {
     ck=get_counter();
 
     // Imprimir el valor de f
+#ifndef DEBUG
     printf("%lf\n", f);
-
-    printf("\n Clocks=%1.10lf \n",ck);
+#else   //DEBUG
+    printf("%12.2lf\n", ck);
+#endif  //DEBUG
 
     free_matrix(a, N, M);
     free_matrix(b, M, N);
