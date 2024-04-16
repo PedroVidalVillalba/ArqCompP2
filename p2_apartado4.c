@@ -139,8 +139,8 @@ int main(int argc, char** argv) {
     register int i, j; // Reordenamos datos 1
     register int a_index, b_index;
     register int ii, jj;
-    int N; // Reordenamos datos 2
-    int C;
+    register int N; // Reordenamos datos 2
+    register int C;
     double *a, *b, *d;
     register double d_value;
     int *ind; // Reordenamos datos 3 (así esta cerca de d)
@@ -191,8 +191,8 @@ int main(int argc, char** argv) {
 
 #pragma omp parallel private(i, j, ii, jj, d_value, a_index, b_index) num_threads (C)
     {
-        register double private_f = 0;
-#pragma omp for
+        double private_f = 0;
+#pragma omp for collapse(2)
         for (i = 0; i < N - N % block_size; i += block_size) {
             for (j = 0; j < N - N % block_size; j += block_size) {
                 for (ii = i; ii < i + block_size; ii++) {
@@ -208,28 +208,18 @@ int main(int argc, char** argv) {
                         d_value += a[a_index++] * (b[b_index++] - c[4]);
                         d_value += a[a_index++] * (b[b_index++] - c[5]);
                         d_value += a[a_index++] * (b[b_index++] - c[6]);
-                        d_value += a[a_index] * (b[b_index] - c[7]);
+                        d_value += a[a_index  ] * (b[b_index  ] - c[7]);
 
                         d[ii * N + jj] = 2 * d_value;
                     }
                 }
             }
-            e[inv_ind[i]] = d[i * (N + 1)] / 2;
-            e[inv_ind[i + 1]] = d[(i + 1) * (N + 1)] / 2;
-            e[inv_ind[i + 2]] = d[(i + 2) * (N + 1)] / 2;
-            e[inv_ind[i + 3]] = d[(i + 3) * (N + 1)] / 2;
-            e[inv_ind[i + 4]] = d[(i + 4) * (N + 1)] / 2;
-            e[inv_ind[i + 5]] = d[(i + 5) * (N + 1)] / 2;
-            e[inv_ind[i + 6]] = d[(i + 6) * (N + 1)] / 2;
-            e[inv_ind[i + 7]] = d[(i + 7) * (N + 1)] / 2;
-            f += e[inv_ind[i]] + e[inv_ind[i + 1]] + e[inv_ind[i + 2]] + e[inv_ind[i + 3]] + e[inv_ind[i + 4]] +
-                 e[inv_ind[i + 5]] + e[inv_ind[i + 6]] + e[inv_ind[i + 7]];
         }
 
-
         // Hacer operaciones restantes
-        for (i = ii; i < N; i++) {
-            for (j = jj; j < N; j++) {
+#pragma omp for
+        for (i = N - N % block_size; i < N; i++) {
+            for (j = N - N % block_size; j < N; j++) {
                 d_value = 0;
                 a_index = i * M;
                 b_index = j * M;
@@ -245,11 +235,16 @@ int main(int argc, char** argv) {
 
                 d[i * N + j] = 2 * d_value;
             }
-            e[inv_ind[i]] = d[i * (N + 1)] / 2;
-            private_f += e[inv_ind[i]];
+        }
+#pragma omp barrier
+
+#pragma omp for
+        for (i = 0; i < N; i++) {
+            e[i] = d[ind[i] * (N + 1)] / 2;
+            private_f += e[i];
         }
 #pragma omp atomic
-            f += private_f;
+        f += private_f;
     }
 
     ck = get_counter();

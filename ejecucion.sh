@@ -15,13 +15,13 @@ gcc p2_apartado2.c  -o p22 -O0 -D DEBUG
 # gcc p2_apartado3.c  -o p23 -O0 -march=native -D DEBUG
 
 gcc p2_apartado4.c  -o p24o0 -O0 -fopenmp -D DEBUG
-# gcc p2_apartado4.c  -o p24o2 -O2 -fopenmp -D DEBUG
+gcc p2_apartado4.c  -o p24o2 -O2 -fopenmp -D DEBUG
 
 LANG="en_US.UTF-8"  # Cambiar el locale a usar el formato estadounidense
 
 # Ejecución
 echo "Id,N,C,Clocks"   # Creamos una cabecera para el CSV resultante
-for i in {1..20}; do
+for i in {1..2}; do
     for N in 500 750 1000 1500 2000 3000 3500; do
         # Ejercicio 1 o0
         F1=`./p21o0 $N`
@@ -43,14 +43,14 @@ for i in {1..20}; do
         # F5=`./p23 $N`
         # printf "3  ,%4d, 1,%14.2lf\n" $N $F5
 
-         for C in 2, 4, 8, 16, 32, 64; do
-             # Ejercicio 4 o0
-             F6=`./p24o0 $N $C`
-             printf "4o0,%4d, 1,%14.2lf\n" $N $F6
+        for C in 2 4 8 16 32 64; do
+            # Ejercicio 4 o0
+            F6=`./p24o0 $N $C`
+            printf "4o0,%4d,%2d,%14.2lf\n" $N $C $F6
 
-        #     # Ejercicio 4 O2
-        #     F7=`./p24o2 $N $C`
-        #     printf "4o2,%4d, 1,%14.2lf\n" $N $F7
+            # Ejercicio 4 o2
+            F7=`./p24o2 $N $C`
+            printf "4o2,%4d,%2d,%14.2lf\n" $N $C $F7
         done
     done
 done

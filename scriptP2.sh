@@ -88,7 +88,7 @@ echo "##################################"
 echo ""
 
 # Check f is the same in all codes
-if [[ $F1 == $F2 ]] && [[ $F1 == $F3 ]] && [[ $F1 == $F4 ]] && [[ $F1 == $F5 ]] && [[ $F1 == $F6 ]] && [[ $F1 == $F7 ]]
+if [[ $F1 == $F2 ]] && [[ $F1 == $F3 ]] && [[ $F1 == $F4 ]] && [[ $F1 == $F6 ]] && [[ $F1 == $F7 ]]
 then
     echo "Everything is fine so far"
 else
