@@ -21,7 +21,7 @@ LANG="en_US.UTF-8"  # Cambiar el locale a usar el formato estadounidense
 
 # Ejecución
 echo "Id,N,C,Clocks"   # Creamos una cabecera para el CSV resultante
-for i in {1..2}; do
+for i in {1..20}; do
     for N in 500 750 1000 1500 2000 3000 3500; do
         # Ejercicio 1 o0
         F1=`./p21o0 $N`
