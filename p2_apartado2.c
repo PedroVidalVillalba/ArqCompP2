@@ -109,42 +109,18 @@ void random_index(int** index, int size) {
     }
 }
 
-void inverse_index(int** inv_index, const int* index, int size) {
-    int i;
-    long line_size = sysconf(_SC_LEVEL1_DCACHE_LINESIZE);
-
-    *inv_index = (int *) _mm_malloc(size * sizeof(int), line_size);
-    for (i = 0; i < size; i++) {
-        (*inv_index)[index[i]] = i;
-    }
-}
-
-void transpose(double** matrix, int rows, int columns) {
-    int i, j;
-    long line_size = sysconf(_SC_LEVEL1_DCACHE_LINESIZE);
-    double* transpose = (double *) _mm_malloc(rows * columns * sizeof(double), line_size);
-
-    for (i = 0; i < rows; i++) {
-        for (j = 0; j < columns; j++) {
-            transpose[j * rows + i] = (*matrix)[i * columns + j];
-        }
-    }
-
-    _mm_free(*matrix);
-    *matrix = transpose;
-}
 
 int main(int argc, char** argv) {
-    register int i, j; // Reordenamos datos 1
+    register int i, j;
     register int a_index, b_index;
     register int ii, jj;
-    int N; // Reordenamos datos 2
-    double *a, *b, *d;
+    register int N;
+    register double *a, *b, *d;
+    double* transpose;
     register double d_value;
-    int *ind; // Reordenamos datos 3 (así esta cerca de d)
-    int *inv_ind; // Creamos un índice inverso para poder juntar los bucles
-    double *c, *e;
-    double f;
+    int *ind;
+    register double *c, *e;
+    register double f;
     double ck;
     long line_size = sysconf(_SC_LEVEL1_DCACHE_LINESIZE);
     register uint block_size;
@@ -161,26 +137,27 @@ int main(int argc, char** argv) {
     d = (double *) _mm_malloc(N * N * sizeof(double), line_size);
     c = (double *) _mm_malloc(M * sizeof(double), line_size);
     e = (double *) _mm_malloc(N * sizeof(double), line_size);
+    transpose = (double *) _mm_malloc(N * M * sizeof(double), line_size);
 
     srand48(RAND_SEED);
     random_matrix(a, N, M);
     random_matrix(b, M, N);
-    transpose(&b, M, N);
     random_array(c, M);
     random_index(&ind, N);
-    inverse_index(&inv_ind, ind, N);
 
     // Comenzamos el contador de ciclos
     start_counter();
 
-    // Realizar las operaciones especificadas
-    /**
-     *
-     * NOTA: HEMOS USADO OPERACIONES p2_apartado_2_1.c sin d_index porque es una movida con bloques. Hemos usado p2_apartado2_5.c y p2_apartado2_4.c para el desenrrollamiento con d_value en registro.
-     * RESULTADO N=3500 CÓDIGO: 612729748
-     * RESULTADO N=3500 O3:      58013340
-     */
+    /* Trasponer la matriz b */
+    for (i = 0; i < M; i++) {
+        for (j = 0; j < N; j++) {
+            transpose[j * M + i] = b[i * N + j];
+        }
+    }
+    _mm_free(b);
+    b = transpose;
 
+    /* Realizar las operaciones especificadas */
     block_size = line_size / sizeof(double);
 
     f = 0;
@@ -205,15 +182,6 @@ int main(int argc, char** argv) {
                 }
             }
         }
-        e[inv_ind[i    ]] = d[ i      * (N + 1)] / 2;
-        e[inv_ind[i + 1]] = d[(i + 1) * (N + 1)] / 2;
-        e[inv_ind[i + 2]] = d[(i + 2) * (N + 1)] / 2;
-        e[inv_ind[i + 3]] = d[(i + 3) * (N + 1)] / 2;
-        e[inv_ind[i + 4]] = d[(i + 4) * (N + 1)] / 2;
-        e[inv_ind[i + 5]] = d[(i + 5) * (N + 1)] / 2;
-        e[inv_ind[i + 6]] = d[(i + 6) * (N + 1)] / 2;
-        e[inv_ind[i + 7]] = d[(i + 7) * (N + 1)] / 2;
-        f += e[inv_ind[i]] + e[inv_ind[i + 1]] + e[inv_ind[i + 2]] + e[inv_ind[i + 3]] + e[inv_ind[i + 4]] + e[inv_ind[i + 5]] + e[inv_ind[i + 6]] + e[inv_ind[i + 7]];
     }
     // Hacer operaciones restantes
     for (i = ii; i < N; i++) {
@@ -233,11 +201,14 @@ int main(int argc, char** argv) {
 
             d[i * N + j] = 2 * d_value;
         }
-        e[inv_ind[i]] = d[i * (N + 1)] / 2;
-        f += e[inv_ind[i]];
     }
 
-    ck=get_counter();
+    for (i = 0; i < N; i++) {
+        e[i] = d[ind[i] * (N + 1)] / 2;
+        f += e[i];
+    }
+
+    ck = get_counter();
 
     // Imprimir el valor de f
 #ifndef DEBUG
@@ -252,7 +223,6 @@ int main(int argc, char** argv) {
     _mm_free(c);
     _mm_free(e);
     _mm_free(ind);
-    _mm_free(inv_ind);
 
     exit(EXIT_SUCCESS);
 }

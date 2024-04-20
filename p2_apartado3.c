@@ -110,36 +110,13 @@ void random_index(int** index, int size) {
     }
 }
 
-void inverse_index(int** inv_index, const int* index, int size) {
-    int i;
-    long line_size = sysconf(_SC_LEVEL1_DCACHE_LINESIZE);
-
-    *inv_index = (int *) _mm_malloc(size * sizeof(int), line_size);
-    for (i = 0; i < size; i++) {
-        (*inv_index)[index[i]] = i;
-    }
-}
-
-void transpose(double** matrix, int rows, int columns) {
-    int i, j;
-    long line_size = sysconf(_SC_LEVEL1_DCACHE_LINESIZE);
-    double* transpose = (double *) _mm_malloc(rows * columns * sizeof(double), line_size);
-
-    for (i = 0; i < rows; i++) {
-        for (j = 0; j < columns; j++) {
-            transpose[j * rows + i] = (*matrix)[i * columns + j];
-        }
-    }
-
-    _mm_free(*matrix);
-    *matrix = transpose;
-}
 
 int main(int argc, char** argv) {
     register int i, j; // Reordenamos datos 1
     register int ii, jj;
-    int N; // Reordenamos datos 2
-    double *a, *b, *d;
+    register int N; // Reordenamos datos 2
+    register double *a, *b, *d;
+    double* transpose;
     int *ind; // Reordenamos datos 3 (así esta cerca de d)
     register double *c, *e;
     register double f;
@@ -159,11 +136,11 @@ int main(int argc, char** argv) {
     d = (double *) _mm_malloc(N * N * sizeof(double), line_size);
     c = (double *) _mm_malloc(M * sizeof(double), line_size);
     e = (double *) _mm_malloc(N * sizeof(double), line_size);
+    transpose = (double *) _mm_malloc(N * M * sizeof(double), line_size);
 
     srand48(RAND_SEED);
     random_matrix(a, N, M);
     random_matrix(b, M, N);
-    transpose(&b, M , N);
     random_array(c, M);
     random_index(&ind, N);
 
@@ -171,12 +148,14 @@ int main(int argc, char** argv) {
     start_counter();
 
     // Realizar las operaciones especificadas
-    /**
-     *
-     * NOTA: HEMOS USADO OPERACIONES p2_apartado_2_1.c sin d_index porque es una movida con bloques. Hemos usado p2_apartado2_5.c y p2_apartado2_4.c para el desenrrollamiento con d_value en registro.
-     * RESULTADO N=3500 CÓDIGO: 612729748
-     * RESULTADO N=3500 O3:      58013340
-     */
+    /* Trasponer la matriz b */
+    for (i = 0; i < M; i++) {
+        for (j = 0; j < N; j++) {
+            transpose[j * M + i] = b[i * N + j];
+        }
+    }
+    _mm_free(b);
+    b = transpose;
 
     block_size = line_size / sizeof(double);
 
