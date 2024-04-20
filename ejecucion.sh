@@ -3,7 +3,7 @@
 #SBATCH -n 1 -c 64 -t 02:00:00 --mem=256G
 # Ponemos nombre a nuestro trabajo para poder identificarlo.
 # ATENCIÓN - Debes sustituir el NN por el número de equipo.
-#SBATCH --job-name p2acgNN
+#SBATCH --job-name p2acg09
 
 # Compilación de los códigos
 gcc p2_apartado1.c  -o p21o0 -O0 -D DEBUG
@@ -12,7 +12,7 @@ gcc p2_apartado1.c  -o p21o3 -O3 -D DEBUG
 
 gcc p2_apartado2.c  -o p22 -O0 -D DEBUG
 
-# gcc p2_apartado3.c  -o p23 -O0 -march=native -D DEBUG
+gcc p2_apartado3.c  -o p23 -O0 -march=native -D DEBUG
 
 gcc p2_apartado4.c  -o p24o0 -O0 -fopenmp -D DEBUG
 gcc p2_apartado4.c  -o p24o2 -O2 -fopenmp -D DEBUG
@@ -39,9 +39,9 @@ for i in {1..20}; do
         F4=`./p22 $N`
         printf "2  ,%4d, 1,%14.2lf\n" $N $F4
 
-        # # Ejercicio 3
-        # F5=`./p23 $N`
-        # printf "3  ,%4d, 1,%14.2lf\n" $N $F5
+        # Ejercicio 3
+        F5=`./p23 $N`
+        printf "3  ,%4d, 1,%14.2lf\n" $N $F5
 
         for C in 2 4 8 16 32 64; do
             # Ejercicio 4 o0

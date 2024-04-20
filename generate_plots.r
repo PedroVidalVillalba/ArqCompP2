@@ -24,10 +24,10 @@ for (i in 1:length(unique(quantiles1$Id))) {
     I = unique(quantiles1$Id)[i];
     x = quantiles1[quantiles1$Id == I, ]$N
     y = quantiles1[quantiles1$Id == I, ]$Clocks[,3]
-    y.min = quantiles1[quantiles1$Id == I, ]$Clocks[,1]
-    y.max = quantiles1[quantiles1$Id == I, ]$Clocks[,5]
+    y.q1 = quantiles1[quantiles1$Id == I, ]$Clocks[,2]
+    y.q3 = quantiles1[quantiles1$Id == I, ]$Clocks[,4]
     points(y ~ x, type = 'l', col = colors1[i], lwd = 2)
-    arrows(x0 = x, x1 = x, y0 = y.min, y1 = y.max, 
+    arrows(x0 = x, x1 = x, y0 = y.q1, y1 = y.q3, 
            code = 3, angle = 90, length = 0.1, col = colors1[i])
 }
 
@@ -52,10 +52,10 @@ for (i in 1:length(unique(quantiles20$C))) {
     C = unique(quantiles20$C)[i];
     x = quantiles20[quantiles20$C == C, ]$N
     y = quantiles20[quantiles20$C == C, ]$Clocks[,3]
-    y.min = quantiles20[quantiles20$C == C, ]$Clocks[,1]
-    y.max = quantiles20[quantiles20$C == C, ]$Clocks[,5]
+    y.q1 = quantiles20[quantiles20$C == C, ]$Clocks[,2]
+    y.q2 = quantiles20[quantiles20$C == C, ]$Clocks[,4]
     points(y ~ x, type = 'l', col = colors20[i], lwd = 2)
-    arrows(x0 = x, x1 = x, y0 = y.min, y1 = y.max, 
+    arrows(x0 = x, x1 = x, y0 = y.q1, y1 = y.q2, 
            code = 3, angle = 90, length = 0.1, col = colors20[i])
 }
 
@@ -73,10 +73,10 @@ for (i in 1:length(unique(quantiles22$C))) {
     C = unique(quantiles22$C)[i];
     x = quantiles22[quantiles22$C == C, ]$N
     y = quantiles22[quantiles22$C == C, ]$Clocks[,3]
-    y.min = quantiles22[quantiles22$C == C, ]$Clocks[,1]
-    y.max = quantiles22[quantiles22$C == C, ]$Clocks[,5]
+    y.q1 = quantiles22[quantiles22$C == C, ]$Clocks[,2]
+    y.q2 = quantiles22[quantiles22$C == C, ]$Clocks[,4]
     points(y ~ x, type = 'l', col = colors22[i], lwd = 2)
-    arrows(x0 = x, x1 = x, y0 = y.min, y1 = y.max, 
+    arrows(x0 = x, x1 = x, y0 = y.q1, y1 = y.q2, 
            code = 3, angle = 90, length = 0.1, col = colors22[i])
 }
 
@@ -86,9 +86,9 @@ legend("topleft", legends, fill = colors22)
 
 ### Gráfica 3: ganancia en velocidad para los distintos números de hilos para N máximo
 quantiles3 = quantiles[quantiles$N == max(quantiles$N) & grepl('4', quantiles$Id),]
-quantiles3 = quantiles3[order(quantiles3$C, quantiles3$Id), ]; quantiles3
+quantiles3 = quantiles3[order(quantiles3$C, quantiles3$Id), ]
 
-colors3 = turbo(length(unique(quantiles3$Id))); colors3
+colors3 = turbo(length(unique(quantiles3$Id)))
 
 plot(quantiles3$Clocks[,3] ~ quantiles3$C, pch = 19,
      type = 'p', col = colors3, 
@@ -103,10 +103,10 @@ for (i in 1:length(unique(quantiles3$Id))) {
     I = unique(quantiles3$Id)[i];
     x = quantiles3[quantiles3$Id == I, ]$C
     y = quantiles3[quantiles3$Id == I, ]$Clocks[,3]
-    y.min = quantiles3[quantiles3$Id == I, ]$Clocks[,1]
-    y.max = quantiles3[quantiles3$Id == I, ]$Clocks[,5]
+    y.q1 = quantiles3[quantiles3$Id == I, ]$Clocks[,2]
+    y.q2 = quantiles3[quantiles3$Id == I, ]$Clocks[,4]
     points(y ~ x, type = 'l', col = colors3[i], lwd = 2)
-    arrows(x0 = x, x1 = x, y0 = y.min, y1 = y.max, 
+    arrows(x0 = x, x1 = x, y0 = y.q1, y1 = y.q2, 
            code = 3, angle = 90, length = 0.1, col = colors3[i])
 }
 
