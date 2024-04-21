@@ -22,6 +22,19 @@
  * lrand48 devuelve un long aleatorio; si el número es par multiplicamos por 1 y si es impar por -1 */
 #define get_rand() ((2 * (lrand48() & 1) - 1) * (1 + drand48()))
 
+/* Directivas del preprocesador para escoger los diferentes tipos de scheduling durante la compilación */
+
+#ifdef USE_DYNAMIC
+#define SCHED_TYPE Dynamic
+#elif defined(USE_AUTO)
+#define SCHED_TYPE Auto
+#elif defined(USE_GUIDED)
+#define SCHED_TYPE Guided
+#elif defined(USE_RUNTIME)
+#define SCHED_TYPE Runtime
+#else // Por defecto static
+#define SCHED_TYPE Static
+#endif
 
 /* CÓDIGO ASOCIADO A LA MEDIDA DE CICLOS */
 
@@ -192,7 +205,7 @@ int main(int argc, char** argv) {
 #pragma omp parallel private(i, j, ii, jj, d_value, a_index, b_index) num_threads (C)
     {
         double private_f = 0;
-#pragma omp for collapse(2)
+#pragma omp for collapse(2) schedule(SCHED_TYPE)
         for (i = 0; i < N - N % block_size; i += block_size) {
             for (j = 0; j < N - N % block_size; j += block_size) {
                 for (ii = i; ii < i + block_size; ii++) {
