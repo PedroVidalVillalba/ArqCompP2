@@ -22,19 +22,20 @@
  * lrand48 devuelve un long aleatorio; si el número es par multiplicamos por 1 y si es impar por -1 */
 #define get_rand() ((2 * (lrand48() & 1) - 1) * (1 + drand48()))
 
-/* Directivas del preprocesador para escoger los diferentes tipos de scheduling durante la compilación */
+/* /1* Directivas del preprocesador para escoger los diferentes tipos de scheduling durante la compilación *1/ */
+/* #ifdef USE_DYNAMIC */
+/* #define SCHED_TYPE dynamic */
+/* #elif defined(USE_AUTO) */
+/* #define SCHED_TYPE auto */
+/* #elif defined(USE_GUIDED) */
+/* #define SCHED_TYPE guided */
+/* #elif defined(USE_RUNTIME) */
+/* #define SCHED_TYPE runtime */
+/* #else // Por defecto static */
+/* #define SCHED_TYPE static */
+/* #endif */
 
-#ifdef USE_DYNAMIC
-#define SCHED_TYPE Dynamic
-#elif defined(USE_AUTO)
-#define SCHED_TYPE Auto
-#elif defined(USE_GUIDED)
-#define SCHED_TYPE Guided
-#elif defined(USE_RUNTIME)
-#define SCHED_TYPE Runtime
-#else // Por defecto static
-#define SCHED_TYPE Static
-#endif
+#define SCHED_TYPE auto   /* A la vista de los experimentos, es el que mejores resultados aporta */
 
 /* CÓDIGO ASOCIADO A LA MEDIDA DE CICLOS */
 
@@ -123,43 +124,19 @@ void random_index(int** index, int size) {
     }
 }
 
-void inverse_index(int** inv_index, const int* index, int size) {
-    int i;
-    long line_size = sysconf(_SC_LEVEL1_DCACHE_LINESIZE);
-
-    *inv_index = (int *) _mm_malloc(size * sizeof(int), line_size);
-    for (i = 0; i < size; i++) {
-        (*inv_index)[index[i]] = i;
-    }
-}
-
-void transpose(double** matrix, int rows, int columns) {
-    int i, j;
-    long line_size = sysconf(_SC_LEVEL1_DCACHE_LINESIZE);
-    double* transpose = (double *) _mm_malloc(rows * columns * sizeof(double), line_size);
-
-    for (i = 0; i < rows; i++) {
-        for (j = 0; j < columns; j++) {
-            transpose[j * rows + i] = (*matrix)[i * columns + j];
-        }
-    }
-
-    _mm_free(*matrix);
-    *matrix = transpose;
-}
 
 int main(int argc, char** argv) {
-    register int i, j; // Reordenamos datos 1
+    register int i, j;
     register int a_index, b_index;
     register int ii, jj;
-    register int N; // Reordenamos datos 2
+    register int N;
     register int C;
-    double *a, *b, *d;
+    register double *a, *b, *d;
+    double *transpose;
     register double d_value;
-    int *ind; // Reordenamos datos 3 (así esta cerca de d)
-    int *inv_ind; // Creamos un índice inverso para poder juntar los bucles
-    double *c, *e;
-    double f;
+    int *ind;
+    register double *c, *e;
+    double f;   /* No se puede poner como register porque tiene que ser compartida entre los hilos */
     double ck;
     long line_size = sysconf(_SC_LEVEL1_DCACHE_LINESIZE);
     register uint block_size;
@@ -177,34 +154,38 @@ int main(int argc, char** argv) {
     d = (double *) _mm_malloc(N * N * sizeof(double), line_size);
     c = (double *) _mm_malloc(M * sizeof(double), line_size);
     e = (double *) _mm_malloc(N * sizeof(double), line_size);
+    transpose = (double *) _mm_malloc(N * M * sizeof(double), line_size);
 
     srand48(RAND_SEED);
     random_matrix(a, N, M);
     random_matrix(b, M, N);
-    transpose(&b, M, N);
     random_array(c, M);
     random_index(&ind, N);
-    inverse_index(&inv_ind, ind, N);
 
     // Comenzamos el contador de ciclos
     start_counter();
 
     // Realizar las operaciones especificadas
-    /**
-     *
-     * NOTA: HEMOS USADO OPERACIONES p2_apartado_2_1.c sin d_index porque es una movida con bloques. Hemos usado p2_apartado2_5.c y p2_apartado2_4.c para el desenrrollamiento con d_value en registro.
-     * RESULTADO N=3500 CÓDIGO: 612729748
-     * RESULTADO N=3500 O3:      58013340
-     */
-
     block_size = line_size / sizeof(double);
 
     f = 0;
-
-
 #pragma omp parallel private(i, j, ii, jj, d_value, a_index, b_index) num_threads (C)
     {
         double private_f = 0;
+
+        /* Trasponer la matriz b */
+#pragma omp for schedule(SCHED_TYPE)
+        for (j = 0; j < N; j++) {
+            for (i = 0; i < M; i++) {
+                transpose[j * M + i] = b[i * N + j];
+            }
+        }
+#pragma omp barrier
+#pragma omp single
+        _mm_free(b);
+
+        b = transpose;
+
 #pragma omp for collapse(2) schedule(SCHED_TYPE)
         for (i = 0; i < N - N % block_size; i += block_size) {
             for (j = 0; j < N - N % block_size; j += block_size) {
@@ -275,7 +256,6 @@ int main(int argc, char** argv) {
     _mm_free(c);
     _mm_free(e);
     _mm_free(ind);
-    _mm_free(inv_ind);
 
     exit(EXIT_SUCCESS);
 }
