@@ -1,8 +1,9 @@
 /**
  * PRÁCTICA 2 ARQUITECTURA DE COMPUTADORES
- * Programación Multinúcleo y extensiones SIMD
+ * Programación Multinúcleo y extensiones SIMD.
+ * Programa paralelizado usando OpenMP.
  *
- * @date 12/03/2024
+ * @date 09/04/2024
  * @authors Cao López, Carlos
  * @authors Vidal Villalba, Pedro
  */
@@ -15,9 +16,12 @@
 #include <pmmintrin.h>
 #include <omp.h>
 
-#define M 8
+#define M 8             /* Dimensión fija */
+#define RAND_SEED 888   /* Semilla aleatoria fija para poder comprobar que los cálculos dan los mismos resultados */
+/* Añadir el flag DEBUG (bien manualmente, con #define DEBUG en este archivo, bien al compilar, con -D DEBUG) para imprimir los ciclos
+ * de reloj que tarda en ejecutarse en lugar de el valor de f */
 
-#define RAND_SEED 888
+
 /* drand48 devuelve un double aleatorio en [0, 1); le sumamos 1 para ponerlo en [1, 2)
  * lrand48 devuelve un long aleatorio; si el número es par multiplicamos por 1 y si es impar por -1 */
 #define get_rand() ((2 * (lrand48() & 1) - 1) * (1 + drand48()))
@@ -37,7 +41,7 @@
 
 #define SCHED_TYPE auto   /* A la vista de los experimentos, es el que mejores resultados aporta */
 
-/* CÓDIGO ASOCIADO A LA MEDIDA DE CICLOS */
+/*** CÓDIGO ASOCIADO A LA MEDIDA DE CICLOS ***/
 
 void start_counter();
 double get_counter();
@@ -84,8 +88,16 @@ double get_counter()
     return result;
 }
 
-/* FIN CÓDIGO ASOCIADO A LA MEDIDA DE CICLOS */
+/*** FIN CÓDIGO ASOCIADO A LA MEDIDA DE CICLOS ***/
 
+/**
+ * Rellena una matriz (ya creada, y codificada como array unidimensional) con valores
+ * aleatorios de valor absoluto en el intervalo [1, 2), y con signo aleatorio.
+ *
+ * @param matrix    Matriz a rellenar
+ * @param rows      Número de filas de la matriz
+ * @param columns   Número de columnas de la matriz
+ */
 void random_matrix(double *matrix, int rows, int columns) {
     int i, j;
 
@@ -96,6 +108,13 @@ void random_matrix(double *matrix, int rows, int columns) {
     }
 }
 
+/**
+ * Rellena un array unidimensional (ya creado) con valores aleatorios
+ * de valor absoluto en el intervalo [1, 2), y con signo aleatorio.
+ *
+ * @param array Array a rellenar
+ * @param size  Tamaño del array
+ */
 void random_array(double* array, int size) {
     int i;
 
@@ -104,11 +123,19 @@ void random_array(double* array, int size) {
     }
 }
 
+/**
+ * Crea un índice con una permutación aleatoria de 
+ * size elementos utilizando el algoritmo de Fisher-Yates shuffle.
+ *
+ * @param index Puntero al vector de enteros en la que guardar la permutación
+ * @param size  Número de elementos en la permutación
+ */
 void random_index(int** index, int size) {
     int i, j;
     int temp;
     long line_size = sysconf(_SC_LEVEL1_DCACHE_LINESIZE);
 
+    /* Guardar el índice en un array alineado a línea caché */
     *index = (int *) _mm_malloc(size * sizeof(int), line_size);
     for (i = 0; i < size; i++) {
         (*index)[i] = i;
@@ -132,7 +159,7 @@ int main(int argc, char** argv) {
     register int N;
     register int C;
     register double *a, *b, *d;
-    double *transpose;
+    double *transpose; /* Matriz auxiliar para trasponer b */
     register double d_value;
     int *ind;
     register double *c, *e;
@@ -149,6 +176,7 @@ int main(int argc, char** argv) {
     N = atoi(argv[1]);
     C = atoi(argv[2]);
 
+    /* Reservamos dinámicamente las matrices y vectores, alineados a línea caché */
     a = (double *) _mm_malloc(N * M * sizeof(double), line_size);
     b = (double *) _mm_malloc(M * N * sizeof(double), line_size);
     d = (double *) _mm_malloc(N * N * sizeof(double), line_size);
@@ -156,36 +184,45 @@ int main(int argc, char** argv) {
     e = (double *) _mm_malloc(N * sizeof(double), line_size);
     transpose = (double *) _mm_malloc(N * M * sizeof(double), line_size);
 
+    /* Rellenamos con valores aleatorios */
     srand48(RAND_SEED);
     random_matrix(a, N, M);
     random_matrix(b, M, N);
     random_array(c, M);
     random_index(&ind, N);
 
-    // Comenzamos el contador de ciclos
+    /*** Comenzamos el contador de ciclos ***/
     start_counter();
 
-    // Realizar las operaciones especificadas
     block_size = line_size / sizeof(double);
-
     f = 0;
+
+    /* Comenzar región paralela */
 #pragma omp parallel private(i, j, ii, jj, d_value, a_index, b_index) num_threads (C)
     {
-        double private_f = 0;
+        register double private_f = 0;   /* Variable privada de cada hilo para acumular su contribución a f */
 
-        /* Trasponer la matriz b */
+        /* Trasponer la matriz b, repartiendo las iteraciones entre los hilos */
 #pragma omp for schedule(SCHED_TYPE)
         for (j = 0; j < N; j++) {
             for (i = 0; i < M; i++) {
                 transpose[j * M + i] = b[i * N + j];
             }
         }
+        /* Esperar a que se acabe de trasponer */
 #pragma omp barrier
+        /* Hacer que solo un hilo libere la vieja matriz b */
 #pragma omp single
         _mm_free(b);
 
         b = transpose;
 
+        /* Realizar las operaciones especificadas.
+         * Aplicamos desenrollamiento del bucle más interno,
+         * uso de registros y operaciones por bloques, intentando reducir
+         * siempre el número de operaciones realizadas y accesos a memoria.
+         * Repartimos las iteraciones de los 2 bucles externos entre los hilos,
+         * para que en cada iteración cada hilo calcule un bloque de la matriz */
 #pragma omp for collapse(2) schedule(SCHED_TYPE)
         for (i = 0; i < N - N % block_size; i += block_size) {
             for (j = 0; j < N - N % block_size; j += block_size) {
@@ -210,7 +247,7 @@ int main(int argc, char** argv) {
             }
         }
 
-        // Hacer operaciones restantes
+        /* Hacer operaciones restantes. Repartimos las iteraciones externas entre los hilos */
 #pragma omp for
         for (i = N - N % block_size; i < N; i++) {
             for (j = N - N % block_size; j < N; j++) {
@@ -230,26 +267,32 @@ int main(int argc, char** argv) {
                 d[i * N + j] = 2 * d_value;
             }
         }
+        /* Esperar a que se acabe de calcular d en su totalidad antes de seguir */
 #pragma omp barrier
 
+        /* Repartimos las iteraciones para calcular e y cada contribución a f */
 #pragma omp for
         for (i = 0; i < N; i++) {
             e[i] = d[ind[i] * (N + 1)] / 2;
             private_f += e[i];
         }
+        /* Juntamos las contribuciones al valor de f en cada hilo, asegurándonos
+         * de que se realiza cada una de forma atómica */
 #pragma omp atomic
         f += private_f;
     }
 
     ck = get_counter();
+    /*** Paramos el contador de ciclos ***/
 
-    // Imprimir el valor de f
+    /* Imprimir el valor de f o el tiempo de ejecución, según el flag DEBUG */
 #ifndef DEBUG
     printf("%lf\n", f);
 #else   //DEBUG
-    printf("%12.2lf\n", ck);
+    printf("%14.2lf\n", ck);
 #endif  //DEBUG
 
+    /* Liberar las variables reservadas dinámicamente */
     _mm_free(a);
     _mm_free(b);
     _mm_free(d);

@@ -1,25 +1,30 @@
 /**
  * PRÁCTICA 2 ARQUITECTURA DE COMPUTADORES
- * Programación Multinúcleo y extensiones SIMD
+ * Programación Multinúcleo y extensiones SIMD.
+ * Programa secuencial con optimización por desenrollamiento de bucles.
  *
  * @date 12/03/2024
  * @authors Cao López, Carlos
  * @authors Vidal Villalba, Pedro
  */
 
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <time.h>
 
-#define M 8
+#define M 8             /* Dimensión fija */
+#define RAND_SEED 888   /* Semilla aleatoria fija para poder comprobar que los cálculos dan los mismos resultados */
+/* Añadir el flag DEBUG (bien manualmente, con #define DEBUG en este archivo, bien al compilar, con -D DEBUG) para imprimir los ciclos
+ * de reloj que tarda en ejecutarse en lugar de el valor de f */
 
-#define RAND_SEED 888
+
 /* drand48 devuelve un double aleatorio en [0, 1); le sumamos 1 para ponerlo en [1, 2)
  * lrand48 devuelve un long aleatorio; si el número es par multiplicamos por 1 y si es impar por -1 */
 #define get_rand() ((2 * (lrand48() & 1) - 1) * (1 + drand48()))
 
-/* CÓDIGO ASOCIADO A LA MEDIDA DE CICLOS */
+/*** CÓDIGO ASOCIADO A LA MEDIDA DE CICLOS ***/
 
 void start_counter();
 double get_counter();
@@ -66,8 +71,16 @@ double get_counter()
     return result;
 }
 
-/* FIN CÓDIGO ASOCIADO A LA MEDIDA DE CICLOS */
+/*** FIN CÓDIGO ASOCIADO A LA MEDIDA DE CICLOS ***/
 
+/**
+ * Rellena una matriz (ya creada, y codificada como array unidimensional) con valores
+ * aleatorios de valor absoluto en el intervalo [1, 2), y con signo aleatorio.
+ *
+ * @param matrix    Matriz a rellenar
+ * @param rows      Número de filas de la matriz
+ * @param columns   Número de columnas de la matriz
+ */
 void random_matrix(double *matrix, int rows, int columns) {
     int i, j;
 
@@ -78,6 +91,13 @@ void random_matrix(double *matrix, int rows, int columns) {
     }
 }
 
+/**
+ * Rellena un array unidimensional (ya creado) con valores aleatorios
+ * de valor absoluto en el intervalo [1, 2), y con signo aleatorio.
+ *
+ * @param array Array a rellenar
+ * @param size  Tamaño del array
+ */
 void random_array(double* array, int size) {
     int i;
 
@@ -86,6 +106,13 @@ void random_array(double* array, int size) {
     }
 }
 
+/**
+ * Crea un índice con una permutación aleatoria de 
+ * size elementos utilizando el algoritmo de Fisher-Yates shuffle.
+ *
+ * @param index Puntero al vector de enteros en la que guardar la permutación
+ * @param size  Número de elementos en la permutación
+ */
 void random_index(int** index, int size) {
     int i, j;
     int temp;
@@ -106,11 +133,11 @@ void random_index(int** index, int size) {
 }
 
 int main(int argc, char** argv) {
-    int i, j, k; // Reordenamos datos 1
-    int N; // Reordenamos datos 2
+    int i, j, k;
+    int N;
     double *a, *b, *d;
     double d_value;
-    int *ind; // Reordenamos datos 3 (así esta cerca de d)
+    int *ind;
     double *c, *e;
     double f;
     double ck;
@@ -122,24 +149,31 @@ int main(int argc, char** argv) {
     }
     N = atoi(argv[1]);
 
+    /* Reservamos dinámicamente las matrices y vectores */
     a = (double *) malloc(N * M * sizeof(double));
     b = (double *) malloc(M * N * sizeof(double));
     c = (double *) malloc(M * sizeof(double));
     e = (double *) malloc(N * sizeof(double));
 
+    /* Rellenamos con valores aleatorios */
     srand48(RAND_SEED);
     random_matrix(a, N, M);
     random_matrix(b, M, N);
     random_array(c, M);
     random_index(&ind, N);
 
-    // Inicialización de todas las componentes de d a cero
+    /* Creación de la matriz d e inicialización de todas sus componentes a cero.
+     * No lo incluimos en el tiempo computable ya que depende de la disponibilidad 
+     * del kernel para ejecutar la reserva de memoria */
     d = (double *) calloc(N * N, sizeof(double));
 
-    // Comenzamos el contador de ciclos
+    /*** Comenzamos el contador de ciclos ***/
     start_counter();
 
-    // Realizar las operaciones especificadas
+    /* Realizar las operaciones especificadas.
+     * Aplicamos desenrollamiento del bucle más interno,
+     * intentando reducir siempre el número de operaciones realizadas
+     * y accesos a memoria. */
     for (i = 0; i < N; i++) {
         for (j = 0; j < N; j++) {
             d_value = 0;
@@ -158,7 +192,8 @@ int main(int argc, char** argv) {
     }
 
     f = 0;
-    /* Desenrollamos el m.c.d.(todos los posibles valores de N) PERO NO! Después, al traducir a instrucciones vectoriales, queremos que sea múltiplo de 2 -> El más cercano es 8 */
+    /* Desenrollamos el bucle realizando 8 iteraciones cada vez (coincidente con
+     * el tamaño de línea) */
     for (i = 0; i < N - 8; i += 8) {
         e[i] = d[ind[i] * (N + 1)] / 2;
         e[i+1] = d[ind[i+1] * (N + 1)] / 2;
@@ -171,20 +206,23 @@ int main(int argc, char** argv) {
 
         f += e[i] + e[i+1] + e[i+2] + e[i+3] + e[i+4] + e[i+5] + e[i+6] + e[i+7];
     }
+    /* Hacemos las operaciones restantes */
     for (; i < N; i++) {
         e[i] = d[ind[i] * (N + 1)] / 2;
         f += e[i];
     }
 
     ck = get_counter();
+    /*** Paramos el contador de ciclos ***/
 
-    // Imprimir el valor de f
+    /* Imprimir el valor de f o el tiempo de ejecución, según el flag DEBUG */
 #ifndef DEBUG
     printf("%lf\n", f);
 #else   //DEBUG
     printf("%14.2lf\n", ck);
 #endif  //DEBUG
 
+    /* Liberar las variables reservadas dinámicamente */
     free(a);
     free(b);
     free(d);

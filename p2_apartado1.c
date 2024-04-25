@@ -1,6 +1,7 @@
 /**
  * PRÁCTICA 2 ARQUITECTURA DE COMPUTADORES
- * Programación Multinúcleo y extensiones SIMD
+ * Programación Multinúcleo y extensiones SIMD.
+ * Programa secuencial base.
  *
  * @date 12/03/2024
  * @authors Cao López, Carlos
@@ -13,8 +14,11 @@
 #include <unistd.h>
 #include <time.h>
 
-#define M 8
-#define RAND_SEED 888
+#define M 8             /* Dimensión fija */
+#define RAND_SEED 888   /* Semilla aleatoria fija para poder comprobar que los cálculos dan los mismos resultados */
+/* Añadir el flag DEBUG (bien manualmente, con #define DEBUG en este archivo, bien al compilar, con -D DEBUG) para imprimir los ciclos
+ * de reloj que tarda en ejecutarse en lugar de el valor de f */
+
 
 /* drand48 devuelve un double aleatorio en [0, 1); le sumamos 1 para ponerlo en [1, 2)
  * lrand48 devuelve un long aleatorio; si el número es par multiplicamos por 1 y si es impar por -1 */
@@ -71,6 +75,14 @@ double get_counter()
 
 /*** FIN CÓDIGO ASOCIADO A LA MEDIDA DE CICLOS ***/
 
+/**
+ * Reserva memoria para una matriz de doubles.
+ *
+ * @param matrix    Puntero a un array de dimensión 2 de doubles
+ * @param rows      Número de filas de la matriz a crear
+ * @param columns   Número de columnas de la matriz a crear
+ *
+ */
 void alloc_matrix(double*** matrix, int rows, int columns) {
     *matrix = (double **) malloc(rows * sizeof(double));
     for (int i = 0; i < rows; i++) {
@@ -78,6 +90,13 @@ void alloc_matrix(double*** matrix, int rows, int columns) {
     }
 }
 
+/**
+ * Libera la memoria reservada para una matriz.
+ *
+ * @param matrix    Matriz a liberar
+ * @param rows      Número de filas de la matriz
+ * @param columns   Número de columnas de la matriz
+ */
 void free_matrix(double **matrix, int rows, int columns) {   
     int i;
 
@@ -87,6 +106,14 @@ void free_matrix(double **matrix, int rows, int columns) {
     free(matrix);
 }
 
+/**
+ * Rellena una matriz (ya creada) con valores aleatorios
+ * de valor absoluto en el intervalo [1, 2), y con signo aleatorio.
+ *
+ * @param matrix    Matriz a rellenar
+ * @param rows      Número de filas de la matriz
+ * @param columns   Número de columnas de la matriz
+ */
 void random_matrix(double **matrix, int rows, int columns) {  
     int i, j;
 
@@ -97,6 +124,13 @@ void random_matrix(double **matrix, int rows, int columns) {
     }                                           
 }
 
+/**
+ * Rellena un array unidimensional (ya creado) con valores aleatorios
+ * de valor absoluto en el intervalo [1, 2), y con signo aleatorio.
+ *
+ * @param array Array a rellenar
+ * @param size  Tamaño del array
+ */
 void random_array(double* array, int size) {         
     int i;
 
@@ -105,7 +139,13 @@ void random_array(double* array, int size) {
     }                                           
 }
 
-/** Fisher-Yates shuffle */
+/**
+ * Crea un índice con una permutación aleatoria de 
+ * size elementos utilizando el algoritmo de Fisher-Yates shuffle.
+ *
+ * @param index Puntero al vector de enteros en la que guardar la permutación
+ * @param size  Número de elementos en la permutación
+ */
 void random_index(int** index, int size) {
     int i, j;
     int temp;
@@ -142,24 +182,28 @@ int main(int argc, char** argv) {
     }
     N = atoi(argv[1]);
 
+    /* Reservamos dinámicamente las matrices y vectores */
     alloc_matrix(&a, N, M);
     alloc_matrix(&b, M, N);
     c = (double *) malloc(M * sizeof(double));
     e = (double *) malloc(N * sizeof(double));
     
+    /* Rellenamos con valores aleatorios */
     srand48(RAND_SEED);
     random_matrix(a, N, M);
     random_matrix(b, M, N);
     random_array(c, M);
     random_index(&ind, N);
 
-    // Inicialización de todas las componentes de d a cero
+    /* Creación de la matriz d e inicialización de todas sus componentes a cero.
+     * No lo incluimos en el tiempo computable ya que depende de la disponibilidad 
+     * del kernel para ejecutar la reserva de memoria */
     alloc_matrix(&d, N, N);
 
-    // Comenzamos el contador de ciclos
+    /*** Comenzamos el contador de ciclos ***/
     start_counter();
 
-    // Realizar las operaciones especificadas
+    /* Realizar las operaciones especificadas */
     for (i = 0; i < N; i++) {
         for (j = 0; j < N; j++) {
             for (k = 0; k < M; k++) {
@@ -175,15 +219,17 @@ int main(int argc, char** argv) {
         f += e[i];
     }
 
-    ck=get_counter();
+    ck = get_counter();
+    /*** Paramos el contador de ciclos ***/
 
-    // Imprimir el valor de f
+    /* Imprimir el valor de f o el tiempo de ejecución, según el flag DEBUG */
 #ifndef DEBUG
     printf("%lf\n", f);
 #else   //DEBUG
     printf("%14.2lf\n", ck);
 #endif  //DEBUG
 
+    /* Liberar las variables reservadas dinámicamente */
     free_matrix(a, N, M);
     free_matrix(b, M, N);
     free_matrix(d, N, N);

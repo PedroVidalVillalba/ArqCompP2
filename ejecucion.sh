@@ -39,7 +39,7 @@ for i in {1..25}; do
         F4=`./p22 $N`
         printf "2  ,%4d,  1,%14.2lf\n" $N $F4
 
-        Ejercicio 3
+        # Ejercicio 3
         F5=`./p23 $N`
         printf "3  ,%4d,  1,%14.2lf\n" $N $F5
 

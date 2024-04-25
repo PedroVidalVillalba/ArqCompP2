@@ -1,6 +1,6 @@
 suppressPackageStartupMessages(library("viridis"))
 
-raw_data = read.csv("out3", header = TRUE)
+raw_data = read.csv("out", header = TRUE)
 quantiles = aggregate(Clocks ~ Id + N + C, raw_data, quantile)
 quantiles = quantiles[order(quantiles$N, quantiles$Id, quantiles$C), ]
 
@@ -69,9 +69,10 @@ data1 = quantiles[quantiles$C == 1 | quantiles$C == 64,]
 
 create_plot(data1, 'N', 'Clocks', 'Id', 
             legend = "Experimento: %s", palette = turbo,
-            main = "Medidas de rendimiento",
+            main = "Comparativa general de rendimiento\nentre las diferentes versiones",
             xlab = "Dimensión de las matrices (N)", 
             ylab = "Millones de ciclos de reloj",
+            log = 'y',
             save_as = "Graficas/comparativa_general.pdf"
 )
 
@@ -83,7 +84,7 @@ data20 = get_speedup(data20, '2  ')
 
 create_plot(data20, 'N', 'Speedup', 'C',
             legend = "C = %d", palette = viridis,
-            main = "Aceleración según el número de hilos (O0)\nrespecto al programa secuencial optimizado",
+            main = "Aceleración según el número de hilos (O0)\nrespecto al programa secuencial optimizado (2)",
             xlab = "Dimensión de las matrices (N)", 
             ylab = "Speedup",
             save_as = "Graficas/speedup_hilosO0.pdf"
@@ -98,7 +99,7 @@ data22 = get_speedup(data22, '2  ')
 
 create_plot(data22, 'N', 'Speedup', 'C',
             legend = "C = %d", palette = mako,
-            main = "Aceleración según el número de hilos (O2)\nrespecto al programa secuencial optimizado",
+            main = "Aceleración según el número de hilos (O2)\nrespecto al programa secuencial optimizado (2)",
             xlab = "Dimensión de las matrices (N)", 
             ylab = "Speedup",
             save_as = "Graficas/speedup_hilosO2.pdf"
@@ -109,15 +110,16 @@ create_plot(data22, 'N', 'Speedup', 'C',
 ### Gráfica 4: comparativa entre los distintos números de hilos para N máximo
 data4 = quantiles[quantiles$N == max(quantiles$N) & grepl('4', quantiles$Id),]
 data4 = data4[order(data4$C, data4$Id), ]
+data4 = get_speedup(data4, '2  ')
 
 
-create_plot(data4, 'C', 'Clocks', 'Id', 
-            legend = "Experimento: %s", legend_pos = "topright", palette = turbo,
-            main = "Comparativa de rendimiento según el número de hilos\npara la dimensión máxima de las matrices (N = 3500)",
+create_plot(data4, 'C', 'Speedup', 'Id', 
+            legend = "Experimento: %s", palette = turbo,
+            main = "Aceleración según el número de hilos\npara la dimensión máxima de las matrices (N = 3500)\nrespecto al programa secuencial optimizado (2)",
             xlab = "Número de hilos (C)", 
-            ylab = "Millones de ciclos de reloj",
+            ylab = "Speedup",
             log = 'x', xaxt = 'n',
-            save_as = "Graficas/comparativa_hilosNmax.pdf"
+            save_as = "Graficas/speedup_hilosNmax.pdf"
 ) 
 
 
@@ -162,7 +164,20 @@ create_plot(data7, 'N', 'Speedup', 'Id',
             main = "Aceleración de la optimización manual (2, 3 y 4)\nfrente a la optimización automática (1o3)",
             xlab = "Dimensión de las matrices (N)", 
             ylab = "Speedup",
+            log = 'y',
             save_as = "Graficas/speedup_234-1o3.pdf"
-            # log = 'y'
+)
+
+### Gráfica 8: Eficiencia respecto al número de hilos
+data8 = quantiles[grepl('4o0', quantiles$Id) , ]
+data8 = get_speedup(data8, '2  ')
+data8$Efficiency = data8$Speedup / data8$C
+create_plot(data8, 'N', 'Efficiency', 'C',
+            legend = "C = %d", palette = viridis,
+            legend_pos = "right",
+            main = "Eficiencia por hilo del programa paralelo (4o0)\n(Speedup / Número de hilos)",
+            xlab = "Dimensión de las matrices (N)", 
+            ylab = "Eficiencia",
+            save_as = "Graficas/eficiencia.pdf"
 )
 
